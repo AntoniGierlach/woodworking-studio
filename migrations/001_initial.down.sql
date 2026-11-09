@@ -1,0 +1,10 @@
+DROP TABLE IF EXISTS app_message_attachments;
+DROP TABLE IF EXISTS app_messages;
+DROP TABLE IF EXISTS app_admin_login_attempts;
+DROP TABLE IF EXISTS app_site_settings;
+DROP TABLE IF EXISTS app_posts;
+DROP TABLE IF EXISTS app_pages;
+DROP TABLE IF EXISTS app_project_images;
+DROP TABLE IF EXISTS app_projects;
+DROP TABLE IF EXISTS app_services;
+DROP TABLE IF EXISTS app_media;
