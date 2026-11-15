@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createObjectStorage } from "./object-storage";
+import { deleteCloudflareFile, readCloudflareFile, writeCloudflareFile } from "./cloudflare-storage";
 
 const localKeyPattern = /^local-media\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(?:png|jpg|webp))$/i;
 
@@ -17,13 +18,16 @@ function localPath(key: string): string {
 export function newPublicMediaKey(extension: string): string {
   if (!["png", "jpg", "webp"].includes(extension)) throw new Error("Invalid image extension.");
   const backend = process.env.PUBLIC_MEDIA_STORAGE?.trim() || "r2";
-  if (backend !== "local" && backend !== "r2") {
-    throw new Error("PUBLIC_MEDIA_STORAGE must be local or r2.");
+  if (backend !== "local" && backend !== "r2" && backend !== "cloudflare") {
+    throw new Error("PUBLIC_MEDIA_STORAGE must be local, r2 or cloudflare.");
   }
   return `${backend === "local" ? "local-media" : "public-media"}/${randomUUID()}.${extension}`;
 }
 
 export async function writePublicMedia(key: string, bytes: Buffer, mimeType: string): Promise<void> {
+  if (process.env.PUBLIC_MEDIA_STORAGE?.trim() === "cloudflare") {
+    return writeCloudflareFile(key, bytes, mimeType);
+  }
   if (key.startsWith("local-media/")) {
     const path = localPath(key);
     await mkdir(join(process.cwd(), "storage", "public-media"), { recursive: true });
@@ -41,6 +45,9 @@ export async function writePublicMedia(key: string, bytes: Buffer, mimeType: str
 }
 
 export async function readPublicMedia(key: string): Promise<Uint8Array> {
+  if (process.env.PUBLIC_MEDIA_STORAGE?.trim() === "cloudflare") {
+    return readCloudflareFile(key);
+  }
   if (key.startsWith("local-media/")) return readFile(localPath(key));
   const storage = createObjectStorage();
   try {
@@ -53,6 +60,9 @@ export async function readPublicMedia(key: string): Promise<Uint8Array> {
 }
 
 export async function deletePublicMedia(key: string): Promise<void> {
+  if (process.env.PUBLIC_MEDIA_STORAGE?.trim() === "cloudflare") {
+    return deleteCloudflareFile(key);
+  }
   if (key.startsWith("local-media/")) {
     await unlink(localPath(key));
     return;

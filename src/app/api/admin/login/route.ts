@@ -22,33 +22,35 @@ function getClientKey(request: NextRequest, secret: string): string {
 }
 
 async function consumeLoginAttempt(key: string): Promise<boolean> {
-  const result = await query<{ blocked: boolean }>(
-    `WITH expired AS (
-       DELETE FROM app_admin_login_attempts
-       WHERE window_started_at < now() - interval '1 day'
-      RETURNING key_hash
-    )
-     INSERT INTO app_admin_login_attempts (key_hash, attempts, window_started_at)
-     VALUES ($1, 1, now())
+  const now = Date.now();
+  if (Math.random() < 0.01) {
+    await query("DELETE FROM app_admin_login_attempts WHERE window_started_at < $1", [now - 86_400_000]);
+  }
+  const result = await query<{ blocked: number }>(
+    `INSERT INTO app_admin_login_attempts (key_hash, attempts, window_started_at)
+     VALUES ($1, 1, $2)
      ON CONFLICT (key_hash) DO UPDATE SET
        attempts = CASE
-         WHEN app_admin_login_attempts.window_started_at < now() - interval '15 minutes' THEN 1
+         WHEN app_admin_login_attempts.locked_until > $2 THEN app_admin_login_attempts.attempts
+         WHEN app_admin_login_attempts.window_started_at < $2 - 900000 THEN 1
          ELSE app_admin_login_attempts.attempts + 1
        END,
        window_started_at = CASE
-         WHEN app_admin_login_attempts.window_started_at < now() - interval '15 minutes' THEN now()
+         WHEN app_admin_login_attempts.locked_until > $2 THEN app_admin_login_attempts.window_started_at
+         WHEN app_admin_login_attempts.window_started_at < $2 - 900000 THEN $2
          ELSE app_admin_login_attempts.window_started_at
        END,
        locked_until = CASE
-         WHEN app_admin_login_attempts.window_started_at < now() - interval '15 minutes' THEN NULL
-         WHEN app_admin_login_attempts.locked_until > now() THEN app_admin_login_attempts.locked_until
-         WHEN app_admin_login_attempts.attempts + 1 >= 10 THEN now() + interval '15 minutes'
+         WHEN app_admin_login_attempts.locked_until > $2 THEN app_admin_login_attempts.locked_until
+         WHEN app_admin_login_attempts.window_started_at < $2 - 900000 THEN NULL
+         WHEN app_admin_login_attempts.attempts + 1 >= 10 THEN $2 + 900000
          ELSE app_admin_login_attempts.locked_until
        END
-     RETURNING (locked_until IS NOT NULL AND locked_until > now()) AS blocked`,
-    [key],
+     RETURNING (locked_until IS NOT NULL AND locked_until > $2) AS blocked`,
+    [key, now],
   );
-  return result.rows[0]?.blocked === true;
+  if (!result.rows[0]) throw new Error("Login attempt was not recorded.");
+  return result.rows[0].blocked === 1;
 }
 
 export async function POST(request: NextRequest) {

@@ -20,26 +20,25 @@ async function consumeWindow(
   maxAttempts: number,
   windowMs: number,
 ): Promise<number | null> {
-  const result = await query<{ attempts: number; retry_after: number }>(
+  const now = Date.now();
+  const result = await query<{ attempts: number; reset_at: number }>(
     `INSERT INTO app_contact_rate_limits (key_hash, attempts, reset_at)
-     VALUES ($1, 1, now() + $2 * interval '1 millisecond')
+     VALUES ($1, 1, $2 + $3)
      ON CONFLICT (key_hash) DO UPDATE SET
        attempts = CASE
-         WHEN app_contact_rate_limits.reset_at <= now() THEN 1
-         ELSE LEAST(app_contact_rate_limits.attempts::bigint + 1, 2147483647)::integer
+         WHEN app_contact_rate_limits.reset_at <= $2 THEN 1
+         ELSE MIN(app_contact_rate_limits.attempts + 1, 2147483647)
        END,
        reset_at = CASE
-         WHEN app_contact_rate_limits.reset_at <= now()
-           THEN now() + $2 * interval '1 millisecond'
+         WHEN app_contact_rate_limits.reset_at <= $2 THEN $2 + $3
          ELSE app_contact_rate_limits.reset_at
        END
-     RETURNING attempts,
-       GREATEST(1, CEIL(EXTRACT(EPOCH FROM (reset_at - now()))))::integer AS retry_after`,
-    [key, windowMs],
+     RETURNING attempts, reset_at`,
+    [key, now, windowMs],
   );
   const window = result.rows[0];
   if (!window) throw new Error("Contact rate limit was not recorded.");
-  return window.attempts > maxAttempts ? window.retry_after : null;
+  return window.attempts > maxAttempts ? Math.max(1, Math.ceil((window.reset_at - now) / 1000)) : null;
 }
 
 export async function contactRetryAfter(
@@ -61,11 +60,11 @@ export async function contactRetryAfter(
       `DELETE FROM app_contact_rate_limits
        WHERE key_hash IN (
          SELECT key_hash FROM app_contact_rate_limits
-         WHERE reset_at < now() - interval '1 day'
+         WHERE reset_at < $1
          ORDER BY reset_at
          LIMIT 1000
-         FOR UPDATE SKIP LOCKED
        )`,
+      [Date.now() - 86_400_000],
     );
   }
 

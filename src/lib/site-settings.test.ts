@@ -12,10 +12,7 @@ describe("ustawienia witryny", () => {
 
   it("pobiera tylko publiczne ustawienia", async () => {
     vi.mocked(query).mockResolvedValueOnce({
-      command: "SELECT",
       rowCount: 1,
-      oid: 0,
-      fields: [],
       rows: [{ company_name: "Pracownia" }],
     });
     const result = await getSiteSettings();

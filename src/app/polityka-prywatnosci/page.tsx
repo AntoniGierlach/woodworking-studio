@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { SiteLayout } from "../site-chrome";
 import { getSiteSettings } from "@/lib/site-settings";
 
@@ -8,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 
-const PrivacyPolicyPage = async () => {
+const PrivacyPolicyContent = async () => {
   const result = await getSiteSettings();
   const settings = result.status === "available" ? result.settings : null;
   const companyName = settings?.company_name?.trim();
@@ -20,7 +21,6 @@ const PrivacyPolicyPage = async () => {
   const hasAdministratorDetails = companyName || address || taxId;
 
   return (
-    <SiteLayout innerPage repeatBackground>
       <article
         aria-labelledby="privacy-title"
         className="inner-page privacy-page"
@@ -345,8 +345,15 @@ const PrivacyPolicyPage = async () => {
           </section>
         </div>
       </article>
-    </SiteLayout>
   );
 };
+
+const PrivacyPolicyPage = () => (
+  <SiteLayout innerPage repeatBackground>
+    <Suspense fallback={<p className="inner-page page-width" role="status">Wczytywanie polityki prywatności…</p>}>
+      <PrivacyPolicyContent />
+    </Suspense>
+  </SiteLayout>
+);
 
 export default PrivacyPolicyPage;

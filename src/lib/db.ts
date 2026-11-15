@@ -1,64 +1,55 @@
 import "server-only";
 
-import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from "pg";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 
-let pool: Pool | undefined;
+type Value = string | number | null | boolean;
+type Statement = { sql: string; values?: readonly Value[] };
+type D1Result<Row> = { results: Row[]; meta: { changes: number } };
+type PreparedStatement = {
+  bind(...values: (string | number | null)[]): PreparedStatement;
+  all<Row>(): Promise<D1Result<Row>>;
+};
+type D1Binding = {
+  prepare(sql: string): PreparedStatement;
+  batch<Row>(statements: PreparedStatement[]): Promise<D1Result<Row>[]>;
+};
 
-export function getPool(): Pool {
-  if (pool) return pool;
-
-  const connectionString = process.env.DATABASE_URL?.trim();
-  if (!connectionString) {
-    throw new Error("DATABASE_URL is not configured.");
+declare global {
+  interface CloudflareEnv {
+    DB: D1Binding;
   }
-
-  pool = new Pool({
-    connectionString,
-    max: 10,
-    idleTimeoutMillis: 30_000,
-    connectionTimeoutMillis: 5_000,
-    ssl: process.env.DATABASE_SSL === "true" ? { rejectUnauthorized: true } : undefined,
-  });
-
-  pool.on("error", () => {
-    console.error(JSON.stringify({ event: "database_pool_error" }));
-  });
-
-  return pool;
 }
 
-export async function query<Row extends QueryResultRow = QueryResultRow>(
-  text: string,
-  values: readonly unknown[] = [],
-): Promise<QueryResult<Row>> {
-  // React's development error transport cannot reliably deserialize AggregateError.
-  return new Promise((resolve, reject) => {
-    getPool().query<Row>(text, [...values], (error, result) => {
-      if (error instanceof AggregateError) {
-        console.warn(JSON.stringify({ event: "database_query_aggregate_error" }));
-        reject(new Error("Database query failed.", { cause: error.errors }));
-      } else if (error) {
-        reject(error);
-      } else {
-        resolve(result);
-      }
-    });
-  });
+function database(): D1Binding {
+  const { DB } = getCloudflareContext().env;
+  if (!DB) throw new Error("Cloudflare D1 binding DB is not configured.");
+  return DB;
 }
 
-export async function withTransaction<T>(
-  operation: (client: PoolClient) => Promise<T>,
-): Promise<T> {
-  const client = await getPool().connect();
-  try {
-    await client.query("BEGIN");
-    const result = await operation(client);
-    await client.query("COMMIT");
-    return result;
-  } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
-  } finally {
-    client.release();
-  }
+function prepare(db: D1Binding, statement: Statement): PreparedStatement {
+  const sql = statement.sql.replace(/\$(\d+)/g, "?$1");
+  const values = (statement.values ?? []).map((value) =>
+    typeof value === "boolean" ? Number(value) : value,
+  );
+  return db.prepare(sql).bind(...values);
+}
+
+export async function query<Row = Record<string, unknown>>(
+  sql: string,
+  values: readonly Value[] = [],
+): Promise<{ rows: Row[]; rowCount: number }> {
+  const result = await prepare(database(), { sql, values }).all<Row>();
+  return { rows: result.results, rowCount: result.meta.changes || result.results.length };
+}
+
+export async function batch<Row = Record<string, unknown>>(
+  statements: readonly Statement[],
+): Promise<Array<{ rows: Row[]; rowCount: number }>> {
+  if (statements.length === 0) return [];
+  const db = database();
+  const results = await db.batch<Row>(statements.map((statement) => prepare(db, statement)));
+  return results.map((result) => ({
+    rows: result.results,
+    rowCount: result.meta.changes || result.results.length,
+  }));
 }

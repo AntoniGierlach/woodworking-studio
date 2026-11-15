@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { getSiteSettings } from "@/lib/site-settings";
-import backgroundImage from "../../storage/background2.jpg";
+import backgroundImage from "../../storage/background2-cloudflare.jpg";
 import workshopImage from "../../storage/workshop.jpg";
 import workshopImage1 from "../../storage/workshop1.jpg";
 import { SiteLayout } from "./site-chrome";

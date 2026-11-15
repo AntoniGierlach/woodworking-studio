@@ -5,7 +5,7 @@ import { connection } from "next/server";
 import { Phone } from "lucide-react";
 import { getSiteSettings } from "@/lib/site-settings";
 import MobileNavigation from "./mobile-navigation";
-import backgroundImage from "../../storage/background2.jpg";
+import backgroundImage from "../../storage/background2-cloudflare.jpg";
 import carpentryLogo from "../../storage/carpentry.png";
 
 export const navigation = [

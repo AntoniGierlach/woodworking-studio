@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createObjectStorage } from "./object-storage";
+import { deleteCloudflareFile, readCloudflareFile, writeCloudflareFile } from "./cloudflare-storage";
 
 const localKeyPattern = /^local-contact\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
 
@@ -17,13 +18,16 @@ function localPath(key: string) {
 export function newContactAttachmentKey(): string {
   const backend = process.env.CONTACT_ATTACHMENT_STORAGE?.trim() ||
     (process.env.PUBLIC_MEDIA_STORAGE?.trim() === "local" ? "local" : "r2");
-  if (backend !== "local" && backend !== "r2") {
-    throw new Error("CONTACT_ATTACHMENT_STORAGE must be local or r2.");
+  if (backend !== "local" && backend !== "r2" && backend !== "cloudflare") {
+    throw new Error("CONTACT_ATTACHMENT_STORAGE must be local, r2 or cloudflare.");
   }
   return `${backend === "local" ? "local-contact" : "contact-uploads"}/${randomUUID()}`;
 }
 
 export async function writeContactAttachment(key: string, bytes: Buffer, mimeType: string) {
+  if (process.env.CONTACT_ATTACHMENT_STORAGE?.trim() === "cloudflare") {
+    return writeCloudflareFile(key, bytes, mimeType);
+  }
   if (key.startsWith("local-contact/")) {
     const path = localPath(key);
     await mkdir(join(process.cwd(), "storage", "private-contact"), { recursive: true });
@@ -41,6 +45,9 @@ export async function writeContactAttachment(key: string, bytes: Buffer, mimeTyp
 }
 
 export async function readContactAttachment(key: string): Promise<Uint8Array> {
+  if (process.env.CONTACT_ATTACHMENT_STORAGE?.trim() === "cloudflare") {
+    return readCloudflareFile(key);
+  }
   if (key.startsWith("local-contact/")) return readFile(localPath(key));
   const storage = createObjectStorage();
   try {
@@ -53,6 +60,9 @@ export async function readContactAttachment(key: string): Promise<Uint8Array> {
 }
 
 export async function deleteContactAttachment(key: string) {
+  if (process.env.CONTACT_ATTACHMENT_STORAGE?.trim() === "cloudflare") {
+    return deleteCloudflareFile(key);
+  }
   if (key.startsWith("local-contact/")) {
     try {
       await unlink(localPath(key));

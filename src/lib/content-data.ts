@@ -94,12 +94,12 @@ export async function getWoodTypes(): Promise<WoodType[]> {
 }
 
 export async function getProjectPreviews(): Promise<ProjectPreview[]> {
-  const result = await query(
+  const result = await query<ProjectPreview>(
     `SELECT id, title, slug, cover_image_id AS cover_image
      FROM app_projects WHERE status = 'published'
      ORDER BY sort, date_created DESC, id ASC LIMIT 100`,
   );
-  return result.rows as ProjectPreview[];
+  return result.rows;
 }
 
 export function getContentUnavailableNotice() {
@@ -152,13 +152,14 @@ export async function getContentCollection<T>(
                          p.description, p.cover_image_id AS cover_image, p.sort,
                          p.status, p.date_created,
                          COALESCE((
-                           SELECT json_agg(json_build_object(
+                           SELECT json_group_array(json_object(
                              'id', pi.id,
                              'file', pi.media_id,
                              'alt', pi.alt,
                              'sort', pi.sort
-                           ) ORDER BY pi.sort)
-                           FROM app_project_images pi WHERE pi.project_id = p.id
+                           ))
+                           FROM (SELECT * FROM app_project_images
+                                 WHERE project_id = p.id ORDER BY sort, id) pi
                          ), '[]') AS project_images
                   FROM app_projects p WHERE p.status = 'published'`;
     const result = slug
@@ -170,7 +171,10 @@ export async function getContentCollection<T>(
           `${base} ORDER BY p.sort, p.date_created DESC, p.id ASC LIMIT $1`,
           [limit],
         );
-    return result.rows as T[];
+    return result.rows.map((row) => ({
+      ...row,
+      project_images: JSON.parse(String(row.project_images)),
+    })) as T[];
   }
 
   throw new Error("Unsupported public content collection.");

@@ -4,6 +4,10 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
+const bucket = vi.hoisted(() => ({ put: vi.fn(), get: vi.fn(), delete: vi.fn() }));
+vi.mock("@opennextjs/cloudflare", () => ({
+  getCloudflareContext: () => ({ env: { FILES: bucket } }),
+}));
 import { deleteContactAttachment, newContactAttachmentKey, readContactAttachment, writeContactAttachment } from "./contact-attachment-storage";
 
 let root: string;
@@ -21,6 +25,7 @@ describe("prywatny lokalny magazyn załączników", () => {
 
   afterEach(async () => {
     vi.restoreAllMocks();
+    vi.clearAllMocks();
     vi.unstubAllEnvs();
     if (key) await unlink(join(root, "storage", "private-contact", key.split("/")[1]));
     await rmdir(join(root, "storage", "private-contact")).catch((error: NodeJS.ErrnoException) => {
@@ -28,6 +33,19 @@ describe("prywatny lokalny magazyn załączników", () => {
     });
     await rmdir(join(root, "storage"));
     await rmdir(root);
+  });
+
+  it("uses the R2 binding for private attachments", async () => {
+    vi.stubEnv("CONTACT_ATTACHMENT_STORAGE", "cloudflare");
+    const remoteKey = newContactAttachmentKey();
+    const bytes = Buffer.from("file");
+    expect(remoteKey).toMatch(/^contact-uploads\//);
+    await writeContactAttachment(remoteKey, bytes, "application/pdf");
+    expect(bucket.put).toHaveBeenCalledWith(remoteKey, bytes, { httpMetadata: { contentType: "application/pdf" } });
+    bucket.get.mockResolvedValue({ arrayBuffer: async () => Uint8Array.from(bytes).buffer });
+    expect(Buffer.from(await readContactAttachment(remoteKey))).toEqual(bytes);
+    await deleteContactAttachment(remoteKey);
+    expect(bucket.delete).toHaveBeenCalledWith(remoteKey);
   });
 
   it("zapisuje i odczytuje prywatny plik oraz usuwa go", async () => {

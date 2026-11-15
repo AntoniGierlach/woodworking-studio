@@ -1,9 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin-session";
-import { query, withTransaction } from "@/lib/db";
+import { batch, query } from "@/lib/db";
 import { isSameOrigin } from "@/lib/request-security";
 import { deleteContactAttachment } from "@/lib/contact-attachment-storage";
+import { randomUUID } from "node:crypto";
 
 const recordStatus = z.enum(["draft", "published"]);
 const contentSlug = z
@@ -94,6 +95,15 @@ function isContentType(value: string): value is ContentType {
   return Object.hasOwn(contentSchemas, value);
 }
 
+function sqlValues(entries: Array<[string, unknown]>): Array<string | number | boolean | null> {
+  return entries.map(([, value]) => {
+    if (value === null || typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+      return value;
+    }
+    throw new Error("Unsupported database value.");
+  });
+}
+
 async function getCollection(type: ContentType) {
   if (type === "settings") {
     const result = await query("SELECT * FROM app_site_settings WHERE id = 1");
@@ -104,7 +114,7 @@ async function getCollection(type: ContentType) {
       `SELECT m.id, m.name, m.email, m.phone, m.subject, m.message, m.status,
               m.email_notification_status, m.date_created, m.is_read,
               COALESCE(
-                json_agg(json_build_object(
+                json_group_array(json_object(
                   'id', a.id,
                   'filename', a.original_filename,
                   'mime_type', a.mime_type,
@@ -118,23 +128,28 @@ async function getCollection(type: ContentType) {
        ORDER BY m.date_created DESC
        LIMIT 100`,
     );
-    return result.rows;
+    return result.rows.map((row) => ({
+      ...row,
+      is_read: Boolean(row.is_read),
+      attachments: JSON.parse(String(row.attachments)),
+    }));
   }
   if (type === "projects") {
     const result = await query(
       `SELECT p.*,
-              COALESCE(
-                array_agg(pi.media_id::text ORDER BY pi.sort)
-                  FILTER (WHERE pi.media_id IS NOT NULL),
-                ARRAY[]::text[]
-              ) AS gallery_media_ids
+              COALESCE((
+                SELECT json_group_array(media_id)
+                FROM (SELECT media_id FROM app_project_images
+                      WHERE project_id = p.id ORDER BY sort, id)
+              ), '[]') AS gallery_media_ids
        FROM app_projects p
-       LEFT JOIN app_project_images pi ON pi.project_id = p.id
-       GROUP BY p.id
        ORDER BY p.sort ASC, p.date_created DESC, p.id ASC
        LIMIT 100`,
     );
-    return result.rows;
+    return result.rows.map((row) => ({
+      ...row,
+      gallery_media_ids: JSON.parse(String(row.gallery_media_ids)),
+    }));
   }
   const orderBy =
     type === "carpentry_services" || type === "services" || type === "woods"
@@ -199,21 +214,21 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "No settings were submitted." }, { status: 422 });
       }
       const columns = entries.map(([column]) => column);
-      const values = entries.map(([, value]) => value);
+      const values = sqlValues(entries);
       const insertColumns = ["id", ...columns];
       const insertValues = ["1", ...values.map((_, index) => `$${index + 1}`)];
       const updates = columns.map((column, index) => `${column} = $${index + 1}`);
       const result = await query(
         `INSERT INTO app_site_settings (${insertColumns.join(", ")})
          VALUES (${insertValues.join(", ")})
-         ON CONFLICT (id) DO UPDATE SET ${updates.join(", ")}, date_updated = now()
+         ON CONFLICT (id) DO UPDATE SET ${updates.join(", ")}, date_updated = CURRENT_TIMESTAMP
          RETURNING *`,
         values,
       );
       return NextResponse.json({ data: result.rows[0] });
     }
 
-    const entries: Array<[string, unknown]> = Object.entries(parsed.data);
+    const entries = Object.entries(parsed.data);
     const galleryIds =
       type === "projects"
         ? contentSchemas.projects.parse(data).gallery_media_ids ?? []
@@ -222,24 +237,22 @@ export async function POST(request: NextRequest) {
       type === "projects"
         ? entries.filter(([column]) => column !== "gallery_media_ids")
         : entries;
-    const columns = recordEntries.map(([column]) => column);
-    const values = recordEntries.map(([, value]) => value);
+    const columns = ["id", ...recordEntries.map(([column]) => column)];
+    const id = randomUUID();
+    const values = [id, ...sqlValues(recordEntries)];
     const insertSql = `INSERT INTO ${tables[type]} (${columns.join(", ")})
        VALUES (${values.map((_, index) => `$${index + 1}`).join(", ")})
        RETURNING id`;
     const result =
       type === "projects"
-        ? await withTransaction(async (client) => {
-            const inserted = await client.query<{ id: string }>(insertSql, values);
-            for (const [sort, mediaId] of galleryIds.entries()) {
-              await client.query(
-                `INSERT INTO app_project_images (project_id, media_id, sort)
-                 VALUES ($1, $2, $3)`,
-                [inserted.rows[0].id, mediaId, sort],
-              );
-            }
-            return inserted;
-          })
+        ? (await batch<{ id: string }>([
+            { sql: insertSql, values },
+            ...galleryIds.map((mediaId, sort) => ({
+              sql: `INSERT INTO app_project_images (id, project_id, media_id, sort)
+                    VALUES ($1, $2, $3, $4)`,
+              values: [randomUUID(), id, mediaId, sort],
+            })),
+          ]))[0]
         : await query(insertSql, values);
     return NextResponse.json({ data: result.rows[0] }, { status: 201 });
   } catch (error) {
@@ -281,7 +294,7 @@ export async function PATCH(request: NextRequest) {
     type === "projects"
       ? entries.filter(([column]) => column !== "gallery_media_ids")
       : entries;
-  const values = recordEntries.map(([, value]) => value);
+  const values = sqlValues(recordEntries);
 
   try {
     let result;
@@ -291,7 +304,7 @@ export async function PATCH(request: NextRequest) {
       result = await query(
         `INSERT INTO app_site_settings (id, ${columns.join(", ")})
          VALUES (1, ${values.map((_, index) => `$${index + 1}`).join(", ")})
-         ON CONFLICT (id) DO UPDATE SET ${assignments.join(", ")}, date_updated = now()
+         ON CONFLICT (id) DO UPDATE SET ${assignments.join(", ")}, date_updated = CURRENT_TIMESTAMP
          RETURNING *`,
         values,
       );
@@ -305,31 +318,20 @@ export async function PATCH(request: NextRequest) {
       const assignments = recordEntries.map(
         ([column], index) => `${column} = $${index + 1}`,
       );
-      assignments.push("date_updated = now()");
+      assignments.push("date_updated = CURRENT_TIMESTAMP");
       const updateSql = `UPDATE ${tables[type]} SET ${assignments.join(", ")}
          WHERE id = $${values.length + 1} RETURNING id`;
       result =
         type === "projects" && galleryIds !== undefined
-          ? await withTransaction(async (client) => {
-              const updated = await client.query(
-                updateSql,
-                [...values, id],
-              );
-              if (updated.rowCount) {
-                await client.query(
-                  "DELETE FROM app_project_images WHERE project_id = $1",
-                  [id],
-                );
-                for (const [sort, mediaId] of galleryIds.entries()) {
-                  await client.query(
-                    `INSERT INTO app_project_images (project_id, media_id, sort)
-                     VALUES ($1, $2, $3)`,
-                    [id, mediaId, sort],
-                  );
-                }
-              }
-              return updated;
-            })
+          ? (await batch([
+              { sql: updateSql, values: [...values, id] },
+              { sql: "DELETE FROM app_project_images WHERE project_id = $1", values: [id] },
+              ...galleryIds.map((mediaId, sort) => ({
+                sql: `INSERT INTO app_project_images (id, project_id, media_id, sort)
+                      SELECT $1, $2, $3, $4 WHERE EXISTS (SELECT 1 FROM app_projects WHERE id = $2)`,
+                values: [randomUUID(), id, mediaId, sort],
+              })),
+            ]))[0]
           : await query(updateSql, [...values, id]);
     }
     if (!result.rowCount) {
@@ -356,20 +358,16 @@ export async function DELETE(request: NextRequest) {
   }
   if (type === "messages") {
     try {
-      const deleted = await withTransaction(async (client) => {
-        const message = await client.query("SELECT id FROM app_messages WHERE id = $1 FOR UPDATE", [id]);
-        if (!message.rowCount) return false;
-        const attachments = await client.query<{ storage_key: string }>(
-          "SELECT storage_key FROM app_message_attachments WHERE message_id = $1",
-          [id],
-        );
-        for (const attachment of attachments.rows) {
-          await deleteContactAttachment(attachment.storage_key);
-        }
-        await client.query("DELETE FROM app_messages WHERE id = $1", [id]);
-        return true;
-      });
-      if (!deleted) return NextResponse.json({ error: "Nie znaleziono wiadomości." }, { status: 404 });
+      const message = await query("SELECT id FROM app_messages WHERE id = $1", [id]);
+      if (!message.rowCount) return NextResponse.json({ error: "Nie znaleziono wiadomości." }, { status: 404 });
+      const attachments = await query<{ storage_key: string }>(
+        "SELECT storage_key FROM app_message_attachments WHERE message_id = $1", [id],
+      );
+      for (const attachment of attachments.rows) {
+        await deleteContactAttachment(attachment.storage_key);
+      }
+      const deleted = await query("DELETE FROM app_messages WHERE id = $1", [id]);
+      if (!deleted.rowCount) return NextResponse.json({ error: "Nie znaleziono wiadomości." }, { status: 404 });
       return NextResponse.json({ deleted: true });
     } catch (error) {
       console.error(JSON.stringify({
@@ -411,13 +409,16 @@ function handleWriteError(error: unknown, type: ContentType) {
     typeof error === "object" && error !== null && "code" in error
       ? String(error.code)
       : "";
-  if (code === "23505") {
+  const reason = error instanceof Error
+    ? `${error.message} ${error.cause instanceof Error ? error.cause.message : ""}`
+    : "";
+  if (code === "23505" || reason.includes("UNIQUE constraint failed")) {
     return NextResponse.json(
       { error: "Wpis o takim adresie URL już istnieje." },
       { status: 409 },
     );
   }
-  if (code === "23503") {
+  if (code === "23503" || reason.includes("FOREIGN KEY constraint failed")) {
     return NextResponse.json(
       { error: "Wybrane zdjęcie nie istnieje." },
       { status: 422 },

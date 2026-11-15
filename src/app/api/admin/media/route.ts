@@ -4,6 +4,7 @@ import { query } from "@/lib/db";
 import { ObjectStorageConfigurationError } from "@/lib/object-storage";
 import { deletePublicMedia, newPublicMediaKey, writePublicMedia } from "@/lib/public-media-storage";
 import { isSameOrigin } from "@/lib/request-security";
+import { randomUUID } from "node:crypto";
 
 function detectImage(bytes: Buffer): { mimeType: string; extension: string } | null {
   if (
@@ -74,10 +75,11 @@ export async function POST(request: NextRequest) {
     const alt = String(formData.get("alt") ?? "").trim().slice(0, 255);
     const saved = await query<{ id: string }>(
       `INSERT INTO app_media
-         (storage_key, original_filename, mime_type, size_bytes, visibility, alt)
-       VALUES ($1, $2, $3, $4, 'public', $5)
+         (id, storage_key, original_filename, mime_type, size_bytes, visibility, alt)
+       VALUES ($1, $2, $3, $4, $5, 'public', $6)
        RETURNING id`,
       [
+        randomUUID(),
         storageKey,
         upload.name.replace(/[\\/\r\n"]/g, "_").slice(0, 255) || "image",
         detected.mimeType,

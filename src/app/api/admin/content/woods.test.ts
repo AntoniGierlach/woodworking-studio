@@ -29,7 +29,7 @@ describe("zarządzanie gatunkami drewna", () => {
     expect((await GET(new NextRequest("http://localhost/api/admin/content?type=woods"))).status).toBe(200);
     expect(mocks.query.mock.calls[0][0]).toContain("app_wood_types");
     expect((await POST(write("POST", { type: "woods", data }))).status).toBe(201);
-    expect(mocks.query.mock.calls[1][1]).toEqual(["Dąb", "Jasny", "Wyraźne", "Naturalny", null, "published"]);
+    expect(mocks.query.mock.calls[1][1]).toEqual([expect.any(String), "Dąb", "Jasny", "Wyraźne", "Naturalny", null, "published"]);
     expect((await PATCH(write("PATCH", { type: "woods", id, data: { tone: "Ciemny" } }))).status).toBe(200);
     expect((await DELETE(new NextRequest(`http://localhost/api/admin/content?type=woods&id=${id}`, { method: "DELETE" }))).status).toBe(200);
   });

@@ -9,7 +9,7 @@ import {
   validateContactFile,
 } from "@/lib/contact";
 import { contactRetryAfter } from "@/lib/contact-rate-limit";
-import { query, withTransaction } from "@/lib/db";
+import { batch, query } from "@/lib/db";
 import { deleteContactAttachment, newContactAttachmentKey, writeContactAttachment } from "@/lib/contact-attachment-storage";
 import { isSameOrigin } from "@/lib/request-security";
 
@@ -81,18 +81,6 @@ async function handleContactRequest(request: NextRequest) {
         },
       },
       { status: 429, headers: { "Retry-After": "60" } },
-    );
-  }
-
-  if (
-    requiredEnv(
-      "DATABASE_URL",
-    ).length > 0
-  ) {
-    return jsonError(
-      503,
-      "contact_service_not_configured",
-      "The contact service is not configured.",
     );
   }
 
@@ -177,11 +165,11 @@ async function handleContactRequest(request: NextRequest) {
       storageKeys.push(storageKey);
     }
 
-    await withTransaction(async (client) => {
-      await client.query(
-        `INSERT INTO app_messages (id, name, email, phone, subject, message)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [
+    await batch([
+      {
+        sql: `INSERT INTO app_messages (id, name, email, phone, subject, message)
+              VALUES ($1, $2, $3, $4, $5, $6)`,
+        values: [
           messageId,
           submission.fields.name,
           submission.fields.email,
@@ -189,23 +177,21 @@ async function handleContactRequest(request: NextRequest) {
           submission.fields.subject || null,
           submission.fields.message,
         ],
-      );
-
-      for (const [index, attachment] of validatedFiles.entries()) {
-        await client.query(
-          `INSERT INTO app_message_attachments
-             (message_id, storage_key, original_filename, mime_type, size_bytes)
-           VALUES ($1, $2, $3, $4, $5)`,
-          [
+      },
+      ...validatedFiles.map((attachment, index) => ({
+          sql: `INSERT INTO app_message_attachments
+             (id, message_id, storage_key, original_filename, mime_type, size_bytes)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          values: [
+            randomUUID(),
             messageId,
             storageKeys[index],
             attachment.safeOriginalName,
             attachment.mimeType,
             attachment.file.buffer.length,
           ],
-        );
-      }
-    });
+        })),
+    ]);
   } catch (error) {
     let cleanupFailed = false;
     for (const key of storageKeys) {

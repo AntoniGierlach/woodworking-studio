@@ -1,8 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin-session";
-import { withTransaction } from "@/lib/db";
-import { moveItem } from "@/lib/reorder";
+import { query } from "@/lib/db";
 import { isSameOrigin } from "@/lib/request-security";
 
 const schema = z.object({
@@ -38,28 +37,30 @@ export async function PATCH(request: NextRequest) {
     woods: "app_wood_types",
   }[type];
   try {
-    const updated = await withTransaction(async (client) => {
-      await client.query(`LOCK TABLE ${table} IN SHARE ROW EXCLUSIVE MODE`);
-      const result = await client.query<{ id: string }>(
-        `SELECT id FROM ${table} ORDER BY sort ASC, date_created DESC, id ASC`,
-      );
-      const ids = result.rows.map((row) => row.id);
-      const from = ids.indexOf(id);
-      const to = ids.indexOf(targetId);
-      if (from === -1 || to === -1) return false;
-      if (from !== to) {
-        const timestampUpdate =
-          type === "carpentry_services" ? ", date_updated = now()" : "";
-        await client.query(
-          `UPDATE ${table} AS entry SET sort = ordered.position - 1${timestampUpdate}
-           FROM unnest($1::uuid[]) WITH ORDINALITY AS ordered(id, position)
-           WHERE entry.id = ordered.id`,
-          [moveItem(ids, from, to)],
-        );
-      }
-      return true;
-    });
-    if (!updated) {
+    const timestampUpdate =
+      type === "carpentry_services" ? ", date_updated = CURRENT_TIMESTAMP" : "";
+    const result = await query(
+      `WITH ranked AS MATERIALIZED (
+         SELECT id, row_number() OVER (ORDER BY sort ASC, date_created DESC, id ASC) AS position
+         FROM ${table}
+       ), positions AS (
+         SELECT (SELECT position FROM ranked WHERE id = $1) AS source,
+                (SELECT position FROM ranked WHERE id = $2) AS target
+       )
+       UPDATE ${table}
+       SET sort = (SELECT CASE
+             WHEN ranked.position = positions.source THEN positions.target
+             WHEN positions.source < positions.target AND ranked.position > positions.source
+                  AND ranked.position <= positions.target THEN ranked.position - 1
+             WHEN positions.source > positions.target AND ranked.position >= positions.target
+                  AND ranked.position < positions.source THEN ranked.position + 1
+             ELSE ranked.position
+           END - 1 FROM ranked, positions WHERE ranked.id = ${table}.id)${timestampUpdate}
+       WHERE EXISTS (SELECT 1 FROM positions WHERE source IS NOT NULL AND target IS NOT NULL)
+       RETURNING id`,
+      [id, targetId],
+    );
+    if (!result.rowCount) {
       return NextResponse.json({ error: "Wpis nie istnieje. Odśwież listę." }, { status: 404 });
     }
     return NextResponse.json({ success: true });
