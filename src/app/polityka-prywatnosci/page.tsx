@@ -6,7 +6,6 @@ export const metadata: Metadata = {
   title: "Quercus Fagus | Informacja o prywatności",
   robots: { index: false, follow: false },
 };
-export const instant = false;
 
 type PrivacySettingsResult = Awaited<ReturnType<typeof getSiteSettings>>;
 

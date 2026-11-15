@@ -18,8 +18,6 @@ export const metadata: Metadata = {
     "Poznaj możliwości projektowania mebli z naturalnego drewna. Szczegóły oferty uzupełnia warsztat.",
 };
 
-export const instant = false;
-
 type Service = {
   id: string;
   title: string;

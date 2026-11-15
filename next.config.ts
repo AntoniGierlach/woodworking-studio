@@ -2,7 +2,6 @@ import type { NextConfig } from "next";
 import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 
 const nextConfig: NextConfig = {
-  partialPrefetching: true,
   images: {
     unoptimized: true,
     remotePatterns: [

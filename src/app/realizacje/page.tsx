@@ -15,8 +15,6 @@ export const metadata: Metadata = {
     "Galeria mebli z naturalnego drewna opublikowanych przez pracownię.",
 };
 
-export const instant = false;
-
 type Project = {
   id: string;
   title: string;

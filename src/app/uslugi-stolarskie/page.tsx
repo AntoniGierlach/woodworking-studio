@@ -14,8 +14,6 @@ export const metadata: Metadata = {
     "Poznaj usługi stolarskie wykonywane z naturalnego drewna i zapytaj o realizację swojego pomysłu.",
 };
 
-export const instant = false;
-
 export default async function CarpentryServicesPage() {
   const result = await getCarpentryServices();
   const unavailableNotice = getContentUnavailableNotice();
