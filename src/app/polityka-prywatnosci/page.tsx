@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
 import { SiteLayout } from "../site-chrome";
 import { getSiteSettings } from "@/lib/site-settings";
 
@@ -7,20 +6,65 @@ export const metadata: Metadata = {
   title: "Quercus Fagus | Informacja o prywatności",
   robots: { index: false, follow: false },
 };
+export const instant = false;
 
+type PrivacySettingsResult = Awaited<ReturnType<typeof getSiteSettings>>;
 
-const PrivacyPolicyContent = async () => {
-  const result = await getSiteSettings();
-  const settings = result.status === "available" ? result.settings : null;
+function PrivacyAdminDetails({ result }: { result: PrivacySettingsResult }) {
+  if (result.status === "unavailable") {
+    return <p className="privacy-info-notice" role="status">Dane administratora są chwilowo niedostępne.</p>;
+  }
+  const settings = result.settings;
   const companyName = settings?.company_name?.trim();
   const address = settings?.address?.trim();
   const taxId = settings?.tax_id?.trim();
   const email = settings?.email?.trim();
+  return (
+    <>
+      {companyName || address || taxId ? (
+        <dl className="privacy-admin-details">
+          {companyName && <div><dt>Nazwa administratora</dt><dd>{companyName}</dd></div>}
+          {address && <div><dt>Adres siedziby</dt><dd className="privacy-address">{address}</dd></div>}
+          {taxId && <div><dt>NIP</dt><dd>{taxId}</dd></div>}
+        </dl>
+      ) : (
+        <p className="privacy-info-notice">Dane administratora nie zostały jeszcze uzupełnione.</p>
+      )}
+      <p>
+        Kontakt w sprawach związanych z ochroną danych:{" "}
+        {email ? <a href={`mailto:${encodeURIComponent(email)}`}>{email}</a> : <span>adres e-mail nie został skonfigurowany</span>}.
+      </p>
+    </>
+  );
+}
+
+function PrivacyContactDetails({ result }: { result: PrivacySettingsResult }) {
+  if (result.status === "unavailable") {
+    return <p className="privacy-info-notice" role="status">Dane kontaktowe są chwilowo niedostępne.</p>;
+  }
+  const settings = result.settings;
+  const address = settings?.address?.trim();
+  const email = settings?.email?.trim();
   const phone = settings?.phone?.trim();
   const phoneLink = phone?.replace(/[^\d+]/g, "");
-  const hasAdministratorDetails = companyName || address || taxId;
+  return email || phone || address ? (
+    <ul className="privacy-contact-list">
+      {email && <li>E-mail: <a href={`mailto:${encodeURIComponent(email)}`}>{email}</a></li>}
+      {phone && <li>Telefon: {phoneLink && /\d/.test(phoneLink) ? <a href={`tel:${phoneLink}`}>{phone}</a> : phone}</li>}
+      {address && <li>Adres: <span className="privacy-address">{address}</span></li>}
+    </ul>
+  ) : (
+    <p className="privacy-info-notice">
+      Dane kontaktowe nie są obecnie skonfigurowane. Skorzystaj z{" "}
+      <a href="/kontakt">formularza kontaktowego</a>.
+    </p>
+  );
+}
 
+const PrivacyPolicyPage = async () => {
+  const result = await getSiteSettings();
   return (
+    <SiteLayout innerPage repeatBackground>
       <article
         aria-labelledby="privacy-title"
         className="inner-page privacy-page"
@@ -43,52 +87,12 @@ const PrivacyPolicyContent = async () => {
         </div>
 
         <div className="page-width privacy-content">
-          {result.status === "unavailable" && (
-            <p className="privacy-info-notice" role="status">
-              Dane administratora są chwilowo niedostępne. Informacje można
-              uzyskać przez formularz kontaktowy.
-            </p>
-          )}
           <section>
             <h2>1. Administrator danych</h2>
             <p>
               Administratorem danych osobowych jest:
             </p>
-            {hasAdministratorDetails ? (
-              <dl className="privacy-admin-details">
-                {companyName && (
-                  <div>
-                    <dt>Nazwa administratora</dt>
-                    <dd>{companyName}</dd>
-                  </div>
-                )}
-                {address && (
-                  <div>
-                    <dt>Adres siedziby</dt>
-                    <dd className="privacy-address">{address}</dd>
-                  </div>
-                )}
-                {taxId && (
-                  <div>
-                    <dt>NIP</dt>
-                    <dd>{taxId}</dd>
-                  </div>
-                )}
-              </dl>
-            ) : (
-              <p className="privacy-info-notice">
-                Dane administratora nie zostały jeszcze uzupełnione.
-              </p>
-            )}
-            <p>
-              Kontakt w sprawach związanych z ochroną danych:{" "}
-              {email ? (
-                <a href={`mailto:${encodeURIComponent(email)}`}>{email}</a>
-              ) : (
-                <span>adres e-mail nie został skonfigurowany</span>
-              )}
-              .
-            </p>
+            <PrivacyAdminDetails result={result} />
           </section>
 
           <section>
@@ -312,48 +316,12 @@ const PrivacyPolicyContent = async () => {
               W sprawach dotyczących prywatności i ochrony
               danych osobowych skontaktuj się z nami:
             </p>
-            {email || phone || address ? (
-              <ul className="privacy-contact-list">
-                {email && (
-                  <li>
-                    E-mail:{" "}
-                    <a href={`mailto:${encodeURIComponent(email)}`}>{email}</a>
-                  </li>
-                )}
-                {phone && (
-                  <li>
-                    Telefon:{" "}
-                    {phoneLink && /\d/.test(phoneLink) ? (
-                      <a href={`tel:${phoneLink}`}>{phone}</a>
-                    ) : (
-                      phone
-                    )}
-                  </li>
-                )}
-                {address && (
-                  <li>
-                    Adres: <span className="privacy-address">{address}</span>
-                  </li>
-                )}
-              </ul>
-            ) : (
-              <p className="privacy-info-notice">
-                Dane kontaktowe nie są obecnie skonfigurowane. Skorzystaj z{" "}
-                <a href="/kontakt">formularza kontaktowego</a>.
-              </p>
-            )}
+            <PrivacyContactDetails result={result} />
           </section>
         </div>
       </article>
+    </SiteLayout>
   );
 };
-
-const PrivacyPolicyPage = () => (
-  <SiteLayout innerPage repeatBackground>
-    <Suspense fallback={<p className="inner-page page-width" role="status">Wczytywanie polityki prywatności…</p>}>
-      <PrivacyPolicyContent />
-    </Suspense>
-  </SiteLayout>
-);
 
 export default PrivacyPolicyPage;

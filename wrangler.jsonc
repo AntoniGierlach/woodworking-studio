@@ -1,0 +1,32 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "woodworking-studio",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-11-15",
+  "observability": { "enabled": true },
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "vars": {
+    "PUBLIC_MEDIA_STORAGE": "cloudflare",
+    "CONTACT_ATTACHMENT_STORAGE": "cloudflare",
+    "CONTACT_TRUST_CLOUDFLARE_IP": "true"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "woodworking-studio",
+      // Replace with the database ID from the Cloudflare dashboard.
+      "database_id": "a90b688f-89c5-4d84-af56-cefc63935290",
+      "migrations_dir": "d1-migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "FILES",
+      "bucket_name": "woodworking-studio-files"
+    }
+  ]
+}

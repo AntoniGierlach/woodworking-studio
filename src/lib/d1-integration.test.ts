@@ -105,6 +105,15 @@ describe("Cloudflare D1 integration", () => {
     const publicProjects = await getContentCollection<{ id: string; project_images: Array<{ file: string }> }>("projects");
     expect(publicProjects.find((item) => item.id === firstId)?.project_images[0].file).toBe(mediaId);
 
+    const missingId = crypto.randomUUID();
+    expect((await reorder(request("PATCH", { type: "projects", id: missingId, targetId: firstId }))).status).toBe(404);
+    expect((await PATCH(request("PATCH", {
+      type: "projects", id: missingId, data: { gallery_media_ids: [mediaId] },
+    }))).status).toBe(404);
+    expect((await POST(request("POST", {
+      type: "projects", data: { title: "Duplicate", slug: "first" },
+    }))).status).toBe(409);
+
     const invalid = await PATCH(request("PATCH", {
       type: "projects", id: firstId, data: { title: "Changed", gallery_media_ids: [crypto.randomUUID()] },
     }));
