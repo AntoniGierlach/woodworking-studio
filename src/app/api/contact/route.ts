@@ -247,7 +247,6 @@ async function handleContactRequest(request: NextRequest) {
         submission.fields.message,
         "",
         `Załączniki: ${validatedFiles.length}${includeEmailAttachments ? "" : " (dostępne w panelu administratora; zbyt duże, by dołączyć je do wiadomości e-mail)"}`,
-        "Zgłoszenie jest zapisane w panelu administratora.",
       ].join("\n"),
       attachments: (includeEmailAttachments ? validatedFiles : []).map(({ file, safeOriginalName, mimeType }) => ({
         filename: safeOriginalName,
