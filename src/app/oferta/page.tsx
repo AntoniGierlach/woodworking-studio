@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import { getImageProps } from "next/image";
+import Image from "next/image";
 import Link from "next/link";
 import ContentNotice from "../content-notice";
 import OfferDescription from "../offer-description";
+import OfferPrice from "../offer-price";
 import OfferList from "./offer-list";
 import {
   getContentAssetUrl,
@@ -12,7 +13,7 @@ import {
 import { SiteLayout } from "../site-chrome";
 
 export const metadata: Metadata = {
-  title: "Oferta | Meble z naturalnego drewna",
+  title: "Quercus Fagus | Oferta",
   description:
     "Poznaj możliwości projektowania mebli z naturalnego drewna. Szczegóły oferty uzupełnia warsztat.",
 };
@@ -25,6 +26,7 @@ type Service = {
   slug: string;
   short_description?: string | null;
   content?: string | null;
+  price?: string | null;
   image?: string | { id: string } | null;
   sort?: number;
 };
@@ -40,14 +42,13 @@ export default async function OfferPage() {
   } catch {
     const notice = getContentUnavailableNotice();
     return (
-      <SiteLayout>
+      <SiteLayout innerPage>
         <section className="inner-page">
           <div className="inner-page-heading page-width">
-            <p className="eyebrow">MOŻLIWOŚCI PRACOWNI</p>
             <h1>
-              Meble z naturalnego
+              Meble, które możesz zabrać do
               <br />
-              <em>drewna.</em>
+              <em>swojego domu.</em>
             </h1>
           </div>
           <div className="page-width">
@@ -59,28 +60,27 @@ export default async function OfferPage() {
   }
 
   return (
-    <SiteLayout>
+    <SiteLayout innerPage>
       <section aria-labelledby="offer-title" className="inner-page">
         <div className="inner-page-heading page-width">
-          <p className="eyebrow">MOŻLIWOŚCI PRACOWNI</p>
           <h1 id="offer-title">
-            Meble z naturalnego
+            Meble, które możesz zabrać do
             <br />
-            <em>drewna.</em>
+            <em>swojego domu.</em>
           </h1>
           <p>
-            Każdy projekt zaczyna się od rozmowy o przestrzeni, potrzebach i
-            materiale. Dostępne usługi są publikowane przez pracownię.
+            W naszej ofercie znajdziesz gotowe meble wykonane z naturalnego
+            drewna. Każdy z nich powstaje w warsztacie, z dbałością o dobór
+            materiału, proporcje i wykończenie. Sprawdź aktualnie dostępne
+            projekty i znajdź coś dla siebie.
           </p>
         </div>
-        <OfferList count={services.length}>
+        <OfferList>
           {services.length === 0 ? (
             <div className="content-notice offer-empty">
-              <p className="eyebrow">OFERTA</p>
               <h2>Lista usług jest w przygotowaniu</h2>
               <p>
-                Gdy warsztat opublikuje usługi, znajdziesz je w tym
-                miejscu.
+                Gdy warsztat opublikuje usługi, znajdziesz je w tym miejscu.
               </p>
               <Link className="button button-dark" href="/kontakt">
                 Zapytaj o meble
@@ -92,27 +92,31 @@ export default async function OfferPage() {
                 <span className="service-number">
                   {String(index + 1).padStart(2, "0")}
                 </span>
-                <div>
+                <div className="offer-item-content">
                   <h2>{service.title}</h2>
                   {service.image && (
-                    // The image's natural aspect ratio is unknown until it loads.
-                    // getImageProps retains Next.js optimization without a fixed-ratio warning.
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img {...getImageProps({
-                      alt: "",
-                      className: "offer-image",
-                      height: 240,
-                      loading: index < 3 ? "eager" : "lazy",
-                      sizes: "(max-width: 760px) 100vw, 40vw",
-                      src: getContentAssetUrl(
-                        typeof service.image === "string"
-                          ? service.image
-                          : service.image.id,
-                      ),
-                      width: 360,
-                    }).props} alt="" />
+                    <div className="offer-image-frame">
+                      <Image
+                        alt=""
+                        className="offer-image"
+                        fill
+                        loading={index < 3 ? "eager" : "lazy"}
+                        sizes="(max-width: 760px) 100vw, (max-width: 1000px) 50vw, 33vw"
+                        src={getContentAssetUrl(
+                          typeof service.image === "string"
+                            ? service.image
+                            : service.image.id,
+                        )}
+                      />
+                    </div>
                   )}
-                  <OfferDescription shortDescription={service.short_description} content={service.content} />
+                  <OfferDescription
+                    shortDescription={service.short_description}
+                    content={service.content}
+                  />
+                </div>
+                <div className="offer-item-footer">
+                  <OfferPrice price={service.price} />
                 </div>
               </article>
             ))

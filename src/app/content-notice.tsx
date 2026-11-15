@@ -14,7 +14,7 @@ export default function ContentNotice({
       <h2>{title}</h2>
       <p>{children}</p>
       <Link className="button button-dark" href="/kontakt">
-        Skontaktuj się
+        Kontakt
       </Link>
     </div>
   );

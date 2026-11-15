@@ -8,6 +8,7 @@ import {
   parseContactMultipart,
   validateContactFile,
 } from "@/lib/contact";
+import { contactRetryAfter } from "@/lib/contact-rate-limit";
 import { query, withTransaction } from "@/lib/db";
 import { deleteContactAttachment, newContactAttachmentKey, writeContactAttachment } from "@/lib/contact-attachment-storage";
 import { isSameOrigin } from "@/lib/request-security";
@@ -17,6 +18,9 @@ type ValidatedContactFile = {
   mimeType: string;
   safeOriginalName: string;
 };
+
+const MAX_ACTIVE_CONTACT_REQUESTS = 3;
+let activeContactRequests = 0;
 
 function jsonError(
   status: number,
@@ -34,19 +38,26 @@ function requiredEnv(...names: string[]): string[] {
   return names.filter((name) => !process.env[name]?.trim());
 }
 
-function trustedClientKey(request: NextRequest): string {
-  return (
-    request.headers.get("cf-connecting-ip")?.trim() ||
-    request.headers.get("x-real-ip")?.trim() ||
-    "unknown"
-  );
-}
-
 export async function POST(request: NextRequest) {
   if (!isSameOrigin(request)) {
     return jsonError(403, "origin_not_allowed", "This request is not allowed.");
   }
 
+  if (activeContactRequests >= MAX_ACTIVE_CONTACT_REQUESTS) {
+    return NextResponse.json(
+      { error: { code: "contact_busy", message: "Too many active requests." } },
+      { status: 503, headers: { "Retry-After": "30" } },
+    );
+  }
+  activeContactRequests += 1;
+  try {
+    return await handleContactRequest(request);
+  } finally {
+    activeContactRequests -= 1;
+  }
+}
+
+async function handleContactRequest(request: NextRequest) {
   let limits;
   try {
     limits = getContactLimits();
@@ -61,13 +72,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (
-    isRateLimited(
-      trustedClientKey(request),
-      limits.rateLimitMax,
-      limits.rateLimitWindowMs,
-    )
-  ) {
+  if (isRateLimited("contact:process", 120, 60_000)) {
     return NextResponse.json(
       {
         error: {
@@ -88,6 +93,38 @@ export async function POST(request: NextRequest) {
       503,
       "contact_service_not_configured",
       "The contact service is not configured.",
+    );
+  }
+
+  let retryAfter: number | null;
+  try {
+    retryAfter = await contactRetryAfter(
+      request,
+      limits.rateLimitMax,
+      limits.rateLimitWindowMs,
+    );
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        event: "contact_rate_limit_failed",
+        reason: error instanceof Error ? error.message : "unknown",
+      }),
+    );
+    return jsonError(
+      503,
+      "contact_service_not_configured",
+      "The contact service is not configured.",
+    );
+  }
+  if (retryAfter !== null) {
+    return NextResponse.json(
+      {
+        error: {
+          code: "rate_limit_exceeded",
+          message: "Too many requests. Try again later.",
+        },
+      },
+      { status: 429, headers: { "Retry-After": String(retryAfter) } },
     );
   }
 

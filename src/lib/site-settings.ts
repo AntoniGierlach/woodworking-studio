@@ -9,6 +9,8 @@ export type SiteSettings = {
   phone: string | null;
   email: string | null;
   address: string | null;
+  tax_id: string | null;
+  opening_hours: string | null;
   footer_text: string | null;
   seo_title: string | null;
   seo_description: string | null;
@@ -21,7 +23,7 @@ export const getSiteSettings = cache(async (): Promise<
   await connection();
   try {
     const result = await query<SiteSettings>(
-      `SELECT company_name, phone, email, address, footer_text, seo_title, seo_description
+      `SELECT company_name, phone, email, address, tax_id, opening_hours, footer_text, seo_title, seo_description
        FROM app_site_settings WHERE id = 1`,
     );
     return { status: "available", settings: result.rows[0] ?? null };

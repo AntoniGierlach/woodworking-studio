@@ -33,7 +33,7 @@ export default function MobileNavigation({
           </Link>
         ))}
         <Link className="mobile-menu-cta" href="/kontakt" onClick={closeMenu}>
-          Skontaktuj się
+          Kontakt
         </Link>
       </nav>
     </details>

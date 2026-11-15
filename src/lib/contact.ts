@@ -9,6 +9,7 @@ export const MAX_TOTAL_SIZE_DEFAULT = 30 * 1024 * 1024;
 const MAX_RATE_LIMIT_ENTRIES = 5_000;
 const MAX_MULTIPART_FIELD_SIZE = 40 * 10_000;
 const MULTIPART_OVERHEAD_BYTES = 1024 * 1024;
+const MULTIPART_TIMEOUT_MS = 120_000;
 
 const contactSchema = z.object({
   name: z.string().trim().min(1).max(120),
@@ -211,13 +212,20 @@ export async function parseContactMultipart(
     throw new ContactRequestError(400, "invalid_request", "Invalid request.");
   }
 
-  const parsePromise = new Promise<void>((resolve, reject) => {
+  let parsingError: ContactRequestError | null = null;
+  let failParsing: (error: ContactRequestError) => void = () => {};
+  const parsePromise = new Promise<ContactRequestError | null>((resolve) => {
     const fail = (error: ContactRequestError) => {
       if (settled) return;
       settled = true;
+      parsingError = error;
       parser.destroy();
-      reject(error);
+      void reader.cancel().catch(() => {
+        console.warn(JSON.stringify({ event: "contact_request_cancel_failed" }));
+      });
+      resolve(error);
     };
+    failParsing = fail;
 
     parser.on("field", (field, value, info) => {
       if (!allowedFields.has(field) || Object.hasOwn(fields, field)) {
@@ -347,14 +355,25 @@ export async function parseContactMultipart(
     parser.on("finish", () => {
       if (!settled) {
         settled = true;
-        resolve();
+        resolve(null);
       }
     });
   });
 
+  const timeout = setTimeout(() => {
+    failParsing(
+      new ContactRequestError(
+        408,
+        "request_timeout",
+        "The contact form upload took too long.",
+      ),
+    );
+  }, MULTIPART_TIMEOUT_MS);
+
   try {
     while (true) {
       const { done, value } = await reader.read();
+      if (parsingError) throw parsingError;
       if (done) break;
 
       requestBytes += value.byteLength;
@@ -371,10 +390,12 @@ export async function parseContactMultipart(
           new Promise<void>((resolve) => parser.once("drain", resolve)),
           parsePromise,
         ]);
+        if (parsingError) throw parsingError;
       }
     }
     parser.end();
-    await parsePromise;
+    const parseError = await parsePromise;
+    if (parseError) throw parseError;
   } catch (error) {
     parser.destroy();
     await reader.cancel().catch(() => undefined);
@@ -385,6 +406,7 @@ export async function parseContactMultipart(
       "The submitted form data is invalid.",
     );
   } finally {
+    clearTimeout(timeout);
     reader.releaseLock();
   }
 

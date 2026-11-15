@@ -14,6 +14,8 @@ describe("formularz oferty w panelu", () => {
     expect(html).toContain('aria-label="Lista usług"');
     expect(html).toContain('aria-label="Podgląd publikacji"');
     expect(html).toContain('name="slug"');
+    expect(html).toContain('name="price"');
+    expect(html).toContain("Cena");
     expect(html).toMatch(/class="admin-publication-fields".*name="slug".*name="status"/);
     expect(html).not.toContain("readOnly");
     expect(html).toContain("Adres tworzy się z nazwy, ale możesz go zmienić ręcznie.");

@@ -6,7 +6,7 @@ import { moveItem } from "@/lib/reorder";
 import { isSameOrigin } from "@/lib/request-security";
 
 const schema = z.object({
-  type: z.enum(["services", "projects", "woods"]),
+  type: z.enum(["carpentry_services", "services", "projects", "woods"]),
   id: z.string().uuid(),
   targetId: z.string().uuid(),
 }).strict();
@@ -31,7 +31,12 @@ export async function PATCH(request: NextRequest) {
   }
 
   const { type, id, targetId } = parsed.data;
-  const table = { projects: "app_projects", services: "app_services", woods: "app_wood_types" }[type];
+  const table = {
+    carpentry_services: "app_carpentry_services",
+    projects: "app_projects",
+    services: "app_services",
+    woods: "app_wood_types",
+  }[type];
   try {
     const updated = await withTransaction(async (client) => {
       await client.query(`LOCK TABLE ${table} IN SHARE ROW EXCLUSIVE MODE`);
@@ -43,8 +48,10 @@ export async function PATCH(request: NextRequest) {
       const to = ids.indexOf(targetId);
       if (from === -1 || to === -1) return false;
       if (from !== to) {
+        const timestampUpdate =
+          type === "carpentry_services" ? ", date_updated = now()" : "";
         await client.query(
-          `UPDATE ${table} AS entry SET sort = ordered.position - 1
+          `UPDATE ${table} AS entry SET sort = ordered.position - 1${timestampUpdate}
            FROM unnest($1::uuid[]) WITH ORDINALITY AS ordered(id, position)
            WHERE entry.id = ordered.id`,
           [moveItem(ids, from, to)],

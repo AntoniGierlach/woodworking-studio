@@ -28,17 +28,15 @@ type Project = {
 };
 
 type ProjectPageProps = {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ slug: string}>;
 };
 
 export const instant = false;
 
 export async function generateMetadata({
-  params,
 }: ProjectPageProps): Promise<Metadata> {
-  const { slug } = await params;
   return {
-    title: `Realizacja ${slug} | Meble z naturalnego drewna`,
+    title: `Quercus Fagus | Realizacja`,
   };
 }
 
@@ -57,7 +55,7 @@ export default async function ProjectDetailPage({ params }: ProjectPageProps) {
   } catch {
     const notice = getContentUnavailableNotice();
     return (
-      <SiteLayout>
+      <SiteLayout innerPage>
         <section className="inner-page page-width">
           <Link className="button button-dark section-action" href="/realizacje">
             Wróć do realizacji
@@ -73,15 +71,12 @@ export default async function ProjectDetailPage({ params }: ProjectPageProps) {
   }
 
   return (
-    <SiteLayout>
+    <SiteLayout innerPage>
       <article aria-labelledby="project-title" className="inner-page">
         <div className="inner-page-heading page-width">
           <Link className="button button-dark" href="/realizacje">
             Wróć do realizacji
           </Link>
-          <p className="eyebrow project-detail-category">
-            {project.category ?? "REALIZACJA"}
-          </p>
           <h1 id="project-title">{project.title}</h1>
           {project.short_description && (
             <p>{project.short_description}</p>
@@ -130,7 +125,7 @@ export default async function ProjectDetailPage({ params }: ProjectPageProps) {
           <p className="eyebrow">PODOBNY PROJEKT?</p>
           <h2>Porozmawiajmy o meblu dopasowanym do Twojej przestrzeni.</h2>
           <Link className="button button-dark" href="/kontakt">
-            Napisz do pracowni  
+            Skontaktuj się  
           </Link>
         </div>
       </article>

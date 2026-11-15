@@ -3,29 +3,13 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { getSiteSettings } from "@/lib/site-settings";
+import backgroundImage from "../../storage/background2.jpg";
 import workshopImage from "../../storage/workshop.jpg";
 import workshopImage1 from "../../storage/workshop1.jpg";
 import { SiteLayout } from "./site-chrome";
+import HomeServices from "./home-services";
 import ProjectShowcase from "./project-showcase";
 import WoodShowcase from "./wood-showcase";
-
-const services = [
-  {
-    number: "01",
-    title: "Meble z dębu",
-    description: "Wyrazisty rysunek słojów i ciepły, naturalny odcień.",
-  },
-  {
-    number: "02",
-    title: "Meble z orzecha",
-    description: "Głębsza barwa i szlachetny charakter drewna.",
-  },
-  {
-    number: "03",
-    title: "Meble na wymiar",
-    description: "Forma dopasowana do przestrzeni i wybranego gatunku.",
-  },
-];
 
 export async function generateMetadata(): Promise<Metadata> {
   const result = await getSiteSettings();
@@ -36,61 +20,60 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function Home() {
+export default async function Home() {
   return (
     <SiteLayout>
-      <section aria-labelledby="hero-title" className="hero page-width">
-        <div className="hero-copy">
-          <h1 id="hero-title">
-            Meble z
-            <br />
-            <em>naturalnego</em>
-            <br />
-            drewna. Na lata.
-          </h1>
-          <p className="hero-description">
-            Dąb, orzech i inne szlachetne gatunki staną się punktem wyjścia dla
-            mebli tworzonych z myślą o Twojej przestrzeni.
-          </p>
-          <div className="hero-actions">
-            <Link className="button button-dark" href="/oferta">
-              Poznaj ofertę
-            </Link>
-            <Link className="button button-dark" href="/realizacje">
-              Zobacz realizacje
-            </Link>
-          </div>
+      <section aria-labelledby="hero-title" className="hero">
+        <div aria-hidden="true" className="hero-background">
+          <Image
+            alt=""
+            fill
+            fetchPriority="low"
+            loading="lazy"
+            sizes="100vw"
+            src={backgroundImage}
+          />
         </div>
 
-        <figure className="hero-visual">
-          <Image
-            alt="Wnętrze drewnianej pracowni stolarskiej z narzędziami i stołami roboczymi"
-            className="hero-image"
-            fill
-            priority
-            sizes="(max-width: 540px) 100vw, 52vw"
-            src={workshopImage}
-          />
-          <span aria-hidden="true" className="image-index">
-            WARSZTAT / 01
-          </span>
-        </figure>
-      </section>
-
-      {/* <section aria-label="Kierunek pracowni" className="statement">
-          <div className="statement-inner page-width">
-            <p className="eyebrow">NATURALNY MATERIAŁ · UWAŻNY PROJEKT</p>
-            <p>
-              Dąb i orzech. Każdy z własnym
+        <div className="hero-inner page-width">
+          <div className="hero-copy">
+            <h1 id="hero-title">
+              Meble z
               <br />
-              <em>charakterem i rysunkiem.</em>
+              <em>naturalnego drewna</em>
+            </h1>
+            <p className="hero-description">
+              Tworzymy meble z naturalnego drewna, dopasowane do wnętrza,
+              potrzeb i pomysłów naszych klientów. Pracujemy z dębem, jesionem i
+              innymi szlachetnymi gatunkami, dbając o to, by każdy projekt miał
+              swój własny charakter.
             </p>
-            <span aria-hidden="true" className="statement-mark">
-              ✳
-            </span>
-          </div>
-        </section> */}
+            <div className="hero-actions">
+              <Link className="button button-dark" href="/oferta">
+                Poznaj ofertę
+              </Link>
+              <Link className="button button-dark" href="/realizacje">
+                Zobacz realizacje
+              </Link>
 
+            </div>
+          </div>
+
+          <figure className="hero-visual">
+            <Image
+              alt="Wnętrze drewnianej pracowni stolarskiej z narzędziami i stołami roboczymi"
+              className="hero-image"
+              fill
+              priority
+              sizes="(max-width: 540px) 100vw, 52vw"
+              src={workshopImage}
+            />
+            <span aria-hidden="true" className="image-index">
+              WARSZTAT / 01
+            </span>
+          </figure>
+        </div>
+      </section>
       <section
         aria-labelledby="services-title"
         className="services section-space page-width"
@@ -98,35 +81,28 @@ export default function Home() {
       >
         <div className="section-heading">
           <div>
-            <p className="eyebrow">DĄB · ORZECH · INNE GATUNKI</p>
             <h2 id="services-title">
-              Meble, w których
+              Co możemy dla
               <br />
-              <em>materiał gra główną rolę.</em>
+              <em>Ciebie</em> zrobić?
             </h2>
           </div>
           <p className="section-intro">
-            Głównym kierunkiem warsztatu są meble z naturalnego drewna. Szczegóły
-            oferty i dostępne gatunki uzupełnij zgodnie z planem pracowni.
+            Każdy projekt zaczyna się od pomysłu i wyboru odpowiedniego
+            materiału. Wykonujemy meble z naturalnego drewna, zarówno według
+            własnych koncepcji, jak i indywidualnych oczekiwań klientów.
           </p>
         </div>
 
-        <div className="service-list">
-          {services.map((service) => (
-            <article className="service-item" key={service.number}>
-              <span className="service-number">{service.number}</span>
-              <div>
-                <h3>{service.title}</h3>
-                <p>{service.description}</p>
-              </div>
-            </article>
-          ))}
-        </div>
-        <div className="section-action">
-          <Link className="button button-dark" href="/oferta">
-            Zobacz pełną ofertę
-          </Link>
-        </div>
+        <Suspense
+          fallback={
+            <p className="service-list-notice" role="status">
+              Ładowanie usług stolarskich…
+            </p>
+          }
+        >
+          <HomeServices />
+        </Suspense>
       </section>
 
       <section
@@ -137,16 +113,19 @@ export default function Home() {
         <div className="projects-inner page-width">
           <div className="projects-heading">
             <div>
-              <p className="eyebrow eyebrow-light">GALERIA REALIZACJI</p>
               <h2 id="projects-title">
-                Projekty, które
+                Zobacz, co powstaje w
                 <br />
-                <em>zostają na lata.</em>
+                <em>naszym warsztacie.</em>
               </h2>
             </div>
           </div>
 
-          <Suspense fallback={<p className="project-carousel-loading">Ładowanie realizacji…</p>}>
+          <Suspense
+            fallback={
+              <p className="project-carousel-loading">Ładowanie realizacji…</p>
+            }
+          >
             <ProjectShowcase />
           </Suspense>
         </div>
@@ -160,22 +139,25 @@ export default function Home() {
         <div className="wood-guide-inner page-width">
           <div className="wood-guide-heading">
             <div>
-              <p className="eyebrow">WYBÓR MATERIAŁU</p>
               <h2 id="wood-guide-title">
-                Każde drewno ma swój
+                Nie każde drewno
                 <br />
-                <em>niepowtarzalny charakter.</em>
+                <em>wygląda i zachowuje</em>
+                <br />
+                się tak samo.
               </h2>
             </div>
             <p>
-              Odpowiedni gatunek drewna nadaje meblom wyjątkowy wygląd i
-              charakter. Od jasnego jesionu, przez klasyczny dąb i szlachetny
-              orzech, aż po głęboko wybarwione gatunki egzotyczne - każde drewno
-              wyróżnia się własną barwą, usłojeniem i strukturą.
+              Jasny jesion, klasyczny dąb, ciemniejszy orzech czy egzotyczne
+              gatunki o ciepłych, czerwonych odcieniach. Każde z nich ma inną
+              barwę, strukturę i usłojenie. Wybór drewna wpływa nie tylko na
+              wygląd mebla, ale też na jego ostateczny charakter.
             </p>
           </div>
 
-          <Suspense fallback={<p className="wood-empty">Ładowanie gatunków drewna…</p>}>
+          <Suspense
+            fallback={<p className="wood-empty">Ładowanie gatunków drewna…</p>}
+          >
             <WoodShowcase />
           </Suspense>
         </div>
@@ -183,42 +165,56 @@ export default function Home() {
 
       <section
         aria-labelledby="about-title"
-        className="about section-space page-width"
+        className="about-section"
         id="o-pracowni"
       >
-        <div className="about-visual">
+        <div aria-hidden="true" className="about-background">
           <Image
-            alt="Detal drewnianego wnętrza — zdjęcie poglądowe"
-            className="about-image"
+            alt=""
             fill
-            sizes="(max-width: 540px) 100vw, 42vw"
-            src={workshopImage1}
+            fetchPriority="low"
+            loading="lazy"
+            sizes="100vw"
+            src={backgroundImage}
           />
-          <span aria-hidden="true" className="image-index">
-            WARSZTAT / 02
-          </span>
         </div>
-        <div className="about-copy">
-          <p className="eyebrow">KILKA SŁÓW O WARSZTACIE</p>
-          <h2 id="about-title">
-            Każdy gatunek
-            <br />
-            opowiada własną
-            <br />
-            <em>historię.</em>
-          </h2>
-          <p>
-            Tworzymy z pasją, łącząc naturalne piękno drewna z rzemieślniczą
-            precyzją. Każdy detal ma znaczenie, a każdy projekt powstaje z myślą
-            o trwałości, funkcjonalności i ponadczasowym charakterze.
-          </p>
+        <div className="about section-space page-width">
+          <div className="about-visual">
+            <Image
+              alt="Detal drewnianego wnętrza — zdjęcie poglądowe"
+              className="about-image"
+              fill
+              sizes="(max-width: 540px) 100vw, 42vw"
+              src={workshopImage1}
+            />
+            <span aria-hidden="true" className="image-index">
+              WARSZTAT / 02
+            </span>
+          </div>
+          <div className="about-copy">
+            <h2 id="about-title">
+              Najpierw jest pomysł.
+              <br />
+              <em>Później praca w drewnie.</em>
+            </h2>
+            <p>
+              W naszym warsztacie drewno nie jest tylko materiałem do wykonania
+              mebla. To od niego zaczynamy planowanie każdego projektu.
+              Przyglądamy się jego kolorowi, usłojeniu i właściwościom, a
+              następnie dobieramy odpowiednią formę i sposób wykonania.
+            </p>
+            <p>
+              Lubimy pracę z naturalnym materiałem, bo każdy kawałek jest trochę
+              inny. To właśnie sprawia, że gotowe meble nie są identycznymi
+              produktami z katalogu.
+            </p>
+          </div>
         </div>
       </section>
 
       <section aria-labelledby="contact-title" className="contact" id="kontakt">
         <div className="contact-inner page-width">
           <div>
-            <p className="eyebrow">NA DOBRY POCZĄTEK</p>
             <h2 id="contact-title">
               Masz pomysł?
               <br />
@@ -227,8 +223,10 @@ export default function Home() {
           </div>
           <div className="contact-copy">
             <p>
-              Masz pytanie o materiał, projekt lub sposób realizacji? Opowiedz o
-              pomyśle w formularzu kontaktowym.
+              Może masz już gotowy projekt, a może dopiero zastanawiasz się,
+              jakie drewno wybrać i od czego zacząć. Napisz nam, czego
+              potrzebujesz. Chętnie poznamy Twój pomysł i porozmawiamy o
+              możliwościach jego realizacji.
             </p>
             <Link className="button button-dark" href="/kontakt">
               Przejdź do formularza

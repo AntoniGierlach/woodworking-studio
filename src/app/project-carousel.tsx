@@ -25,7 +25,6 @@ export function getVisibleProjects(projects: CarouselProject[], active: number) 
 
 export default function ProjectCarousel({ projects }: { projects: CarouselProject[] }) {
   const [slide, setSlide] = useState({ active: 0, direction: 0 });
-  const [paused, setPaused] = useState(false);
   const [interacting, setInteracting] = useState(false);
   const [hovering, setHovering] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(true);
@@ -41,12 +40,12 @@ export default function ProjectCarousel({ projects }: { projects: CarouselProjec
   }, []);
 
   useEffect(() => {
-    if (count < 2 || paused || interacting || hovering || reducedMotion) return;
+    if (count < 2 || interacting || hovering || reducedMotion) return;
     const timer = window.setInterval(() => {
       setSlide(({ active }) => ({ active: (active + 1) % count, direction: 1 }));
     }, 10000);
     return () => window.clearInterval(timer);
-  }, [count, paused, interacting, hovering, reducedMotion, timerVersion]);
+  }, [count, interacting, hovering, reducedMotion, timerVersion]);
 
   function move(direction: number) {
     setSlide(({ active }) => ({ active: (active + direction + count) % count, direction }));
@@ -74,10 +73,12 @@ export default function ProjectCarousel({ projects }: { projects: CarouselProjec
             (slide.direction === 1 && position === "next") ||
             (slide.direction === -1 && position === "previous")
           );
+          const enterFromLeft =
+            count === 2 && slide.direction === -1 && position === "current";
           return (
             <div
-              className={`project-carousel-slide project-carousel-${position}${wraps ? " project-carousel-wrap" : ""}`}
-              key={project.id}
+              className={`project-carousel-slide project-carousel-${position}${wraps ? " project-carousel-wrap" : ""}${enterFromLeft ? " project-carousel-enter-from-left" : ""}`}
+              key={enterFromLeft ? `${project.id}-previous-${slide.active}` : project.id}
             >
               {project.imageUrl ? (
                 <Image alt="" fill sizes="(max-width: 760px) 75vw, 45vw" src={project.imageUrl} />
@@ -111,12 +112,9 @@ export default function ProjectCarousel({ projects }: { projects: CarouselProjec
           </>
         )}
       </div>
-      <div className="project-carousel-caption" aria-live={paused || interacting || hovering || reducedMotion ? "polite" : "off"} aria-atomic="true">
+      <div className="project-carousel-caption" aria-live={interacting || hovering || reducedMotion ? "polite" : "off"} aria-atomic="true">
         <span>{String((slide.active % count) + 1).padStart(2, "0")} / {String(count).padStart(2, "0")}</span>
         <h3>{projects[slide.active % count].title}</h3>
-      </div>
-      <div className="project-carousel-controls">
-        <Link className="project-carousel-all" href="/realizacje">Zobacz wszystkie realizacje</Link>
       </div>
     </div>
   );

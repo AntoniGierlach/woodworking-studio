@@ -13,11 +13,25 @@ const contentSlug = z
   .max(100)
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
 const contentSchemas = {
+  carpentry_services: z.object({
+    title: z.string().trim().min(1).max(255),
+    description: z.string().trim().min(1).max(100_000),
+    price: z.preprocess(
+      (value) => typeof value === "string" && value.trim() === "" ? null : value,
+      z.string().trim().max(120).nullable(),
+    ).optional(),
+    sort: z.coerce.number().int().min(-100_000).max(100_000).optional(),
+    status: recordStatus.optional(),
+  }).strict(),
   services: z.object({
     title: z.string().trim().min(1).max(255),
     slug: contentSlug,
     short_description: z.string().max(500).nullable().optional(),
     content: z.string().max(100_000).nullable().optional(),
+    price: z.preprocess(
+      (value) => typeof value === "string" && value.trim() === "" ? null : value,
+      z.string().trim().max(120).nullable(),
+    ).optional(),
     image_id: z.string().uuid().nullable().optional(),
     sort: z.coerce.number().int().min(-100_000).max(100_000).optional(),
     status: recordStatus.optional(),
@@ -55,6 +69,8 @@ const contentSchemas = {
     phone: z.string().max(100).nullable().optional(),
     email: z.string().trim().email().max(320).nullable().optional(),
     address: z.string().max(10_000).nullable().optional(),
+    tax_id: z.string().trim().max(20).nullable().optional(),
+    opening_hours: z.string().max(1_000).nullable().optional(),
     service_area: z.string().max(255).nullable().optional(),
     facebook_url: z.string().url().max(2048).nullable().optional(),
     instagram_url: z.string().url().max(2048).nullable().optional(),
@@ -67,6 +83,7 @@ const contentSchemas = {
 type ContentType = keyof typeof contentSchemas;
 
 const tables: Record<Exclude<ContentType, "settings">, string> = {
+  carpentry_services: "app_carpentry_services",
   services: "app_services",
   projects: "app_projects",
   woods: "app_wood_types",
@@ -120,7 +137,9 @@ async function getCollection(type: ContentType) {
     return result.rows;
   }
   const orderBy =
-    type === "services" || type === "woods" ? "sort ASC, date_created DESC, id ASC" : "date_created DESC";
+    type === "carpentry_services" || type === "services" || type === "woods"
+      ? "sort ASC, date_created DESC, id ASC"
+      : "date_created DESC";
   const result = await query(
     `SELECT * FROM ${tables[type]} ORDER BY ${orderBy} LIMIT 100`,
   );

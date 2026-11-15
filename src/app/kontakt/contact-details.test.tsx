@@ -13,6 +13,8 @@ const settings = {
   phone: "+48 123 456 789",
   email: "kontakt@example.pl",
   address: "ul. Dębowa 1\n00-001 Warszawa",
+  tax_id: null,
+  opening_hours: null,
   footer_text: null,
   seo_title: null,
   seo_description: null,
@@ -27,10 +29,12 @@ describe("dane kontaktowe", () => {
     const address = encodeURIComponent(settings.address);
     expect(html).toContain("Pracownia Dąb");
     expect(html).toContain('href="tel:+48123456789"');
-    expect(html).toContain('href="mailto:kontakt%40example.pl"');
+    expect(html).toContain(
+      'aria-label="Kopiuj adres e-mail do schowka: kontakt@example.pl"',
+    );
+    expect(html).not.toContain("mailto:");
     expect(html).toContain("ul. Dębowa 1");
     expect(html).toContain(`https://maps.google.com/maps?q=${address}&amp;output=embed`);
-    expect(html).toContain(`https://www.google.com/maps/search/?api=1&amp;query=${address}`);
     expect(html).toContain('title="Mapa Google:');
   });
 

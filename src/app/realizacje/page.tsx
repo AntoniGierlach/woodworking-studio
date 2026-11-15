@@ -10,7 +10,7 @@ import {
 import { SiteLayout } from "../site-chrome";
 
 export const metadata: Metadata = {
-  title: "Realizacje | Meble z naturalnego drewna",
+  title: "Quercus Fagus | Realizacje",
   description:
     "Galeria mebli z naturalnego drewna opublikowanych przez pracownię.",
 };
@@ -37,14 +37,13 @@ export default async function ProjectsPage() {
   } catch {
     const notice = getContentUnavailableNotice();
     return (
-      <SiteLayout>
+      <SiteLayout innerPage>
         <section className="inner-page">
           <div className="inner-page-heading page-width">
-            <p className="eyebrow">GALERIA PRACOWNI</p>
             <h1>
-              Realizacje
+              Zobacz, co potrafimy
               <br />
-              <em>z naturalnego drewna.</em>
+              <em> stworzyć.</em>
             </h1>
           </div>
           <div className="page-width">
@@ -56,27 +55,26 @@ export default async function ProjectsPage() {
   }
 
   return (
-    <SiteLayout>
+    <SiteLayout innerPage>
       <section aria-labelledby="projects-page-title" className="inner-page">
         <div className="inner-page-heading page-width">
-          <p className="eyebrow">GALERIA PRACOWNI</p>
           <h1 id="projects-page-title">
-            Realizacje
+            Zobacz, co potrafimy
             <br />
-            <em>z naturalnego drewna.</em>
+            <em> stworzyć.</em>
           </h1>
           <p>
-            Każdy projekt ma własne proporcje, funkcję i rysunek drewna.
-            Poznaj meble i projekty wykonane przez pracownię.
+            Od prostych form po bardziej wymagające projekty. Prezentujemy tutaj
+            wybrane meble wykonane w naszym warsztacie – zarówno autorskie
+            pomysły, jak i realizacje przygotowane na zamówienie.
           </p>
         </div>
         <div className="page-width project-grid">
           {projects.length === 0 ? (
             <div className="content-notice project-empty">
-              <p className="eyebrow">REALIZACJE</p>
-              <h2>Pierwsze realizacje pojawią się tutaj</h2>
+              <h2>Pierwsze projekty pojawią się tutaj</h2>
               <p>
-                Galeria czeka na zdjęcia i opisy dodane przez pracownię.
+                Galeria czeka na zdjęcia i opisy dodane przez warsztat.
                 Przykładowe projekty nie są przedstawiane jako faktyczne
                 realizacje.
               </p>
@@ -113,13 +111,12 @@ export default async function ProjectsPage() {
                       {String(index + 1).padStart(2, "0")}
                     </span>
                   )}
-                  <span className="project-card-meta">
-                    {project.category ?? "Realizacja"}
-                  </span>
-                  <h2>{project.title}</h2>
-                  {project.short_description && (
-                    <p>{project.short_description}</p>
-                  )}
+                  <div className="project-card-copy">
+                    <h2>{project.title}</h2>
+                    {project.short_description && (
+                      <p>{project.short_description}</p>
+                    )}
+                  </div>
                 </Link>
               </article>
             ))

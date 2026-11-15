@@ -3,7 +3,7 @@ import { SiteLayout } from "./site-chrome";
 
 export default function NotFound() {
   return (
-    <SiteLayout>
+    <SiteLayout innerPage>
       <section aria-labelledby="not-found-title" className="inner-page">
         <div className="inner-page-heading page-width">
           <p className="eyebrow">404 · NIE ZNALEZIONO STRONY</p>

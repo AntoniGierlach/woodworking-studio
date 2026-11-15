@@ -12,6 +12,7 @@ export interface Service {
   slug: string;
   short_description?: string | null;
   content?: string | null;
+  price?: string | null;
   image?: string | MediaReference | null;
   sort?: number | null;
   status: string;
@@ -52,6 +53,35 @@ export interface WoodType {
   grain: string;
   character: string;
   image_id: string | null;
+}
+
+export interface CarpentryService {
+  id: string;
+  title: string;
+  description: string;
+  price: string | null;
+}
+
+export async function getCarpentryServices(): Promise<
+  | { status: "available"; services: CarpentryService[] }
+  | { status: "unavailable" }
+> {
+  try {
+    const result = await query<CarpentryService>(
+      `SELECT id, title, description, price
+       FROM app_carpentry_services
+       WHERE status = 'published'
+       ORDER BY sort ASC, date_created DESC, id ASC
+       LIMIT 100`,
+    );
+    return { status: "available", services: result.rows };
+  } catch (error) {
+    console.error(JSON.stringify({
+      event: "carpentry_services_read_failed",
+      reason: error instanceof Error ? error.message : "unknown",
+    }));
+    return { status: "unavailable" };
+  }
 }
 
 export async function getWoodTypes(): Promise<WoodType[]> {
@@ -101,14 +131,14 @@ export async function getContentCollection<T>(
   if (collection === "services") {
     const result = slug
       ? await query(
-          `SELECT id, title, slug, short_description, content, image_id AS image,
+          `SELECT id, title, slug, short_description, content, price, image_id AS image,
                   sort, status, date_created
            FROM app_services WHERE status = 'published' AND slug = $1
            ORDER BY sort ASC, date_created DESC, id ASC LIMIT $2`,
           [slug, limit],
         )
       : await query(
-          `SELECT id, title, slug, short_description, content, image_id AS image,
+          `SELECT id, title, slug, short_description, content, price, image_id AS image,
                   sort, status, date_created
            FROM app_services WHERE status = 'published'
            ORDER BY sort ASC, date_created DESC, id ASC LIMIT $1`,

@@ -17,24 +17,43 @@ import OfferPage from "./page";
 describe("lista ofert", () => {
   beforeEach(() => vi.resetAllMocks());
 
-  it("udostępnia wszystkie oferty w kolejności w przewijanym regionie", async () => {
+  it("udostępnia wszystkie oferty w responsywnej siatce i zachowuje ich kolejność", async () => {
     mocks.getContentCollection.mockResolvedValue(
       Array.from({ length: 5 }, (_, i) => ({ id: String(i), title: `Oferta ${i + 1}` })),
     );
     const html = renderToStaticMarkup(await OfferPage());
-    expect(html).toContain('aria-label="Lista ofert przewijana w poziomie"');
-    expect(html).toContain('tabindex="0"');
-    expect(html).toContain("offer-list-scroll");
+    expect(html).toContain("offer-list");
+    expect(html).not.toContain("offer-list-scroll");
+    expect(html).not.toContain('tabindex="0"');
     expect(html.match(/class="service-item offer-item"/g)).toHaveLength(5);
     expect(html.indexOf("Oferta 1")).toBeLessThan(html.indexOf("Oferta 5"));
   });
 
-  it("zachowuje stan pustej listy bez przewijanego regionu", async () => {
+  it("zachowuje stan pustej listy bez kart", async () => {
     mocks.getContentCollection.mockResolvedValue([]);
     const html = renderToStaticMarkup(await OfferPage());
     expect(html).toContain("Lista usług jest w przygotowaniu");
     expect(html).not.toContain("offer-list-scroll");
-    expect(html).not.toContain('tabindex="0"');
+  });
+
+  it("wyświetla cenę produktu lub szacowany przedział", async () => {
+    mocks.getContentCollection.mockResolvedValue([
+      { id: "1", title: "Stół", price: "~300-500 zł" },
+    ]);
+    const html = renderToStaticMarkup(await OfferPage());
+    expect(html).toContain("~300-500 zł");
+    expect(html).toContain("Cena");
+  });
+
+  it("rozwija pełną treść długiego opisu na żądanie", async () => {
+    const description = "Opis mebla ".repeat(30);
+    mocks.getContentCollection.mockResolvedValue([
+      { id: "1", title: "Stół", content: description },
+    ]);
+    const html = renderToStaticMarkup(await OfferPage());
+    expect(html).toContain("<details");
+    expect(html).toContain("Pełny opis");
+    expect(html).toContain(description.trim());
   });
 
   it("ładuje pierwsze zdjęcia od razu, a kolejne dopiero w razie potrzeby", async () => {

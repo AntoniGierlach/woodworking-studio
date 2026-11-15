@@ -4,9 +4,9 @@ import ScrollToTop from "./scroll-to-top";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Meble z naturalnego drewna — dąb i orzech",
+  title: "Quercus Fagus - Meble z naturalnego drewna",
   description:
-    "Warsztat mebli z naturalnego drewna, w tym dębu i orzecha. Nazwa, lokalizacja i szczegóły oferty wymagają uzupełnienia przed publikacją.",
+    "Warsztat mebli ze szlachetnego drewna, w tym dębu i orzecha.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

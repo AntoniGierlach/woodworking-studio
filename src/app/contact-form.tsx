@@ -115,6 +115,10 @@ export default function ContactForm() {
             "Formularz nie jest jeszcze skonfigurowany. Wiadomość nie została wysłana.",
           rate_limit_exceeded:
             "Wysłano już kilka wiadomości. Odczekaj chwilę i spróbuj ponownie.",
+          contact_busy:
+            "Formularz jest chwilowo obciążony. Odczekaj chwilę i spróbuj ponownie.",
+          request_timeout:
+            "Przesyłanie trwało zbyt długo. Sprawdź połączenie i spróbuj ponownie.",
           validation_error:
             "Sprawdź poprawność danych w formularzu i spróbuj ponownie.",
           unsupported_file:
@@ -211,11 +215,12 @@ export default function ContactForm() {
       </div>
 
       <div className="form-field">
-        <label htmlFor="contact-subject">Rodzaj projektu (opcjonalnie)</label>
+        <label htmlFor="contact-subject">Temat (opcjonalnie)</label>
         <select defaultValue="" id="contact-subject" name="subject">
           <option value="">Wybierz lub pomiń</option>
           <option value="Mebel wolnostojący">Mebel wolnostojący</option>
           <option value="Zabudowa">Zabudowa</option>
+          <option value="Usługa stolarska">Usługa stolarska</option>
           <option value="Inne">Inne / jeszcze nie wiem</option>
         </select>
       </div>
@@ -228,7 +233,7 @@ export default function ContactForm() {
           minLength={10}
           name="message"
           required
-          rows={6}
+          rows={10}
         />
       </div>
 
@@ -299,9 +304,7 @@ export default function ContactForm() {
       </div>
 
       <p className="privacy-notice">
-        Informacja o przetwarzaniu danych wymaga uzupełnienia przed
-        uruchomieniem produkcyjnym.{" "}
-        <Link href="/polityka-prywatnosci">Zobacz, czego brakuje.</Link>
+        <Link href="/polityka-prywatnosci">Polityka prywatności.</Link>
       </p>
 
       {submission.kind === "error" && (

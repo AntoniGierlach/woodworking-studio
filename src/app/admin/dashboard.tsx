@@ -29,13 +29,21 @@ import {
 } from "lucide-react";
 import { slugify } from "@/lib/slugify";
 import OfferDescription from "../offer-description";
+import OfferPrice from "../offer-price";
 import WoodCard from "../wood-card";
 import MessageInbox from "./message-inbox";
 
-type ContentType = "services" | "projects" | "woods" | "messages" | "settings";
+type ContentType =
+  | "carpentry_services"
+  | "services"
+  | "projects"
+  | "woods"
+  | "messages"
+  | "settings";
 type RecordItem = Record<string, unknown> & { id?: string | number };
 
 const sections: Array<{ id: ContentType; label: string }> = [
+  { id: "carpentry_services", label: "Usługi stolarskie" },
   { id: "services", label: "Oferta" },
   { id: "projects", label: "Realizacje" },
   { id: "woods", label: "Drewno" },
@@ -50,10 +58,32 @@ const fields: Record<
     label: string;
     type?: "textarea" | "number" | "url" | "email";
     required?: boolean;
+    maxLength?: number;
+    hint?: string;
   }>
 > = {
+  carpentry_services: [
+    { name: "title", label: "Nazwa usługi", required: true, maxLength: 255 },
+    {
+      name: "description",
+      label: "Opis usługi",
+      type: "textarea",
+      required: true,
+      maxLength: 100_000,
+    },
+    {
+      name: "price",
+      label: "Cena lub przedział cenowy",
+      maxLength: 120,
+    },
+  ],
   services: [
     { name: "title", label: "Nazwa usługi", required: true },
+    {
+      name: "price",
+      label: "Cena",
+      maxLength: 120,
+    },
     { name: "content", label: "Opis usługi", type: "textarea" },
   ],
   projects: [
@@ -67,10 +97,18 @@ const fields: Record<
     { name: "character", label: "Charakterystyka", required: true },
   ],
   settings: [
-    { name: "company_name", label: "Nazwa pracowni" },
+    { name: "company_name", label: "Nazwa warsztatu" },
     { name: "phone", label: "Telefon" },
     { name: "email", label: "E-mail", type: "email" },
+    { name: "tax_id", label: "NIP", maxLength: 20 },
     { name: "address", label: "Adres", type: "textarea" },
+    {
+      name: "opening_hours",
+      label: "Godziny otwarcia",
+      type: "textarea",
+      maxLength: 1_000,
+      hint: "Każdy dzień wpisz w osobnym wierszu, np. Poniedziałek: 9:00–15:00.",
+    },
     { name: "footer_text", label: "Tekst stopki", type: "textarea" },
     { name: "seo_title", label: "Tytuł SEO" },
     { name: "seo_description", label: "Opis SEO", type: "textarea" },
@@ -116,19 +154,29 @@ export function AdminDashboard() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [pending, setPending] = useState(false);
-  const [selectedMessageId, setSelectedMessageId] = useState<string | number | null>(null);
+  const [selectedMessageId, setSelectedMessageId] = useState<
+    string | number | null
+  >(null);
   const [uploading, setUploading] = useState(false);
   const [galleryIds, setGalleryIds] = useState<string[]>([]);
   const [coverId, setCoverId] = useState("");
   const [previewTitle, setPreviewTitle] = useState("");
+  const [previewPrice, setPreviewPrice] = useState("");
   const [slugOverride, setSlugOverride] = useState<string | null>(null);
   const [previewDescription, setPreviewDescription] = useState("");
-  const [woodDetails, setWoodDetails] = useState({ tone: "", grain: "", character: "" });
+  const [woodDetails, setWoodDetails] = useState({
+    tone: "",
+    grain: "",
+    character: "",
+  });
   const [editorVersion, setEditorVersion] = useState(0);
   const draggedId = useRef<string | null>(null);
   const [dragTarget, setDragTarget] = useState<string | null>(null);
 
-  function selectItem(item: RecordItem | null, type: ContentType = section) {
+  function selectItem(
+    item: RecordItem | null,
+    type: ContentType = section,
+  ) {
     const title = String(item?.title ?? "");
     const savedSlug = item?.slug == null ? null : String(item.slug);
     setEditorVersion((version) => version + 1);
@@ -140,6 +188,7 @@ export function AdminDashboard() {
     setPreviewDescription(
       String(item?.[type === "services" ? "content" : "description"] ?? ""),
     );
+    setPreviewPrice(String(item?.price ?? ""));
     setWoodDetails({
       tone: String(item?.tone ?? ""),
       grain: String(item?.grain ?? ""),
@@ -222,7 +271,7 @@ export function AdminDashboard() {
     }
     if (section !== "settings") {
       data.status = String(formData.get("status") ?? "draft");
-      if (section !== "woods") {
+      if (section !== "woods" && section !== "carpentry_services") {
         const slug = String(formData.get("slug") ?? "").trim();
         if (slug.length > 100 || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
           setError(
@@ -233,8 +282,9 @@ export function AdminDashboard() {
         }
         data.slug = slug;
       }
-      data[section === "projects" ? "cover_image_id" : "image_id"] =
-        coverId || null;
+      if (section === "projects") data.cover_image_id = coverId || null;
+      if (section === "services" || section === "woods")
+        data.image_id = coverId || null;
     }
     if (section === "projects") data.gallery_media_ids = galleryIds;
 
@@ -357,30 +407,61 @@ export function AdminDashboard() {
       const response = await fetch("/api/admin/content", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "messages", id: item.id, data: { is_read: true } }),
+        body: JSON.stringify({
+          type: "messages",
+          id: item.id,
+          data: { is_read: true },
+        }),
       });
       const result = (await response.json()) as { error?: string };
-      if (!response.ok) throw new Error(result.error ?? "Nie udało się oznaczyć wiadomości jako przeczytanej.");
-      setItems((current) => current.map((entry) => entry.id === item.id ? { ...entry, is_read: true } : entry));
+      if (!response.ok)
+        throw new Error(
+          result.error ??
+            "Nie udało się oznaczyć wiadomości jako przeczytanej.",
+        );
+      setItems((current) =>
+        current.map((entry) =>
+          entry.id === item.id ? { ...entry, is_read: true } : entry,
+        ),
+      );
     } catch (readError) {
-      setError(readError instanceof Error ? readError.message : "Nie udało się oznaczyć wiadomości jako przeczytanej.");
+      setError(
+        readError instanceof Error
+          ? readError.message
+          : "Nie udało się oznaczyć wiadomości jako przeczytanej.",
+      );
     }
   }
 
   async function deleteMessage(item: RecordItem) {
-    if (!item.id || pending || !window.confirm(`Usunąć wiadomość od „${String(item.name ?? "nadawcy")}” wraz z załącznikami? Tej operacji nie można cofnąć.`)) return;
+    if (
+      !item.id ||
+      pending ||
+      !window.confirm(
+        `Usunąć wiadomość od „${String(item.name ?? "nadawcy")}” wraz z załącznikami? Tej operacji nie można cofnąć.`,
+      )
+    )
+      return;
     setPending(true);
     setNotice("");
     setError("");
     try {
-      const response = await fetch(`/api/admin/content?type=messages&id=${encodeURIComponent(item.id)}`, { method: "DELETE" });
+      const response = await fetch(
+        `/api/admin/content?type=messages&id=${encodeURIComponent(item.id)}`,
+        { method: "DELETE" },
+      );
       const result = (await response.json()) as { error?: string };
-      if (!response.ok) throw new Error(result.error ?? "Nie udało się usunąć wiadomości.");
+      if (!response.ok)
+        throw new Error(result.error ?? "Nie udało się usunąć wiadomości.");
       setItems((current) => current.filter((entry) => entry.id !== item.id));
-      setSelectedMessageId((current) => current === item.id ? null : current);
+      setSelectedMessageId((current) => (current === item.id ? null : current));
       setNotice("Wiadomość i jej załączniki zostały usunięte.");
     } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : "Nie udało się usunąć wiadomości.");
+      setError(
+        deleteError instanceof Error
+          ? deleteError.message
+          : "Nie udało się usunąć wiadomości.",
+      );
     } finally {
       setPending(false);
     }
@@ -551,7 +632,7 @@ export function AdminDashboard() {
             </p>
           )}
 
-          {section !== "messages" && (
+          {section !== "messages" ? (
             <div
               className={
                 section === "settings"
@@ -562,19 +643,29 @@ export function AdminDashboard() {
               {section !== "settings" && (
                 <aside
                   aria-label={
-                    section === "projects" ? "Lista realizacji" : section === "woods" ? "Lista gatunków drewna" : "Lista usług"
+                    section === "projects"
+                      ? "Lista realizacji"
+                      : section === "woods"
+                        ? "Lista gatunków drewna"
+                        : section === "carpentry_services"
+                          ? "Lista usług stolarskich"
+                          : "Lista ofert"
                   }
                   className="admin-record-list"
                 >
-                  {items.length === 0 && (
+                  {items.length === 0 ? (
                     <p className="admin-empty">Nie ma jeszcze wpisów.</p>
-                  )}
+                  ) : null}
                   {items.map((item, index) => {
                     const id = String(item.id ?? "");
                     const imageId =
                       item[
                         section === "projects" ? "cover_image_id" : "image_id"
                       ];
+                    const hasImage =
+                      section === "projects" ||
+                      section === "services" ||
+                      section === "woods";
                     return (
                       <article
                         className={`admin-record-card${dragTarget === id ? " is-drag-target" : ""}`}
@@ -607,7 +698,9 @@ export function AdminDashboard() {
                             <h2>{titleOf(item)}</h2>
                             {item.slug != null && <p>{String(item.slug)}</p>}
                           </div>
-                          {typeof imageId === "string" && imageId ? (
+                          {hasImage &&
+                          typeof imageId === "string" &&
+                          imageId ? (
                             <Image
                               alt=""
                               className="admin-record-thumbnail"
@@ -615,14 +708,14 @@ export function AdminDashboard() {
                               height={80}
                               src={`/api/media/${encodeURIComponent(imageId)}`}
                             />
-                          ) : (
+                          ) : hasImage ? (
                             <span
                               aria-hidden="true"
                               className="admin-record-thumbnail admin-record-placeholder"
                             >
                               <ImageOff size={24} />
                             </span>
-                          )}
+                          ) : null}
                         </div>
                         <span
                           className={`admin-status status-${String(item.status ?? "draft")}`}
@@ -714,7 +807,7 @@ export function AdminDashboard() {
                   {editorItem
                     ? "Edytuj treść"
                     : section === "settings"
-                      ? "Dane pracowni"
+                      ? "Dane warsztatu"
                       : "Nowy wpis"}
                 </h2>
                 <div className="admin-field-grid">
@@ -722,6 +815,7 @@ export function AdminDashboard() {
                     const value = editorItem?.[field.name];
                     const common = {
                       defaultValue: value == null ? "" : String(value),
+                      maxLength: field.maxLength,
                       name: field.name,
                       required: field.required,
                     };
@@ -753,44 +847,46 @@ export function AdminDashboard() {
                             onChange={(event) => {
                               if (field.name === "title")
                                 setPreviewTitle(event.currentTarget.value);
-                              if (field.name === "tone" || field.name === "grain" || field.name === "character") {
+                              if (field.name === "price")
+                                setPreviewPrice(event.currentTarget.value);
+                              if (
+                                field.name === "tone" ||
+                                field.name === "grain" ||
+                                field.name === "character"
+                              ) {
                                 const value = event.currentTarget.value;
-                                setWoodDetails((current) => ({ ...current, [field.name]: value }));
+                                setWoodDetails((current) => ({
+                                  ...current,
+                                  [field.name]: value,
+                                }));
                               }
                             }}
                             type={field.type ?? "text"}
                           />
                         )}
+                        {field.hint && <small>{field.hint}</small>}
                       </label>
                     );
                   })}
                   {section !== "settings" && (
                     <div className="admin-publication-fields">
-                      {section !== "woods" && <label className="admin-field">
-                        Adres (slug)
-                        <input
-                          name="slug"
-                          value={slugOverride ?? slugify(previewTitle)}
-                          onChange={(event) =>
-                            setSlugOverride(event.currentTarget.value)
-                          }
-                          maxLength={100}
-                          pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
-                          title="Użyj małych liter bez polskich znaków, cyfr i pojedynczych myślników."
-                          required
-                        />
-                        <small>
-                          Adres tworzy się z nazwy, ale możesz go zmienić ręcznie.
-                        </small>
-                        {editing &&
-                          (slugOverride ?? slugify(previewTitle)) !==
-                            String(editing.slug ?? "") && (
-                            <small>
-                              Po zapisaniu zmieni się adres istniejącego wpisu.
-                              Stary link przestanie działać.
-                            </small>
-                          )}
-                      </label>}
+                      {section !== "woods" &&
+                        section !== "carpentry_services" && (
+                          <label className="admin-field">
+                            Adres (slug)
+                            <input
+                              name="slug"
+                              value={slugOverride ?? slugify(previewTitle)}
+                              onChange={(event) =>
+                                setSlugOverride(event.currentTarget.value)
+                              }
+                              maxLength={100}
+                              pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+                              title="Użyj małych liter bez polskich znaków, cyfr i pojedynczych myślników."
+                              required
+                            />
+                          </label>
+                        )}
                       <label className="admin-field">
                         Widoczność
                         <select
@@ -805,12 +901,16 @@ export function AdminDashboard() {
                   )}
                 </div>
 
-                {(section === "projects" || section === "services" || section === "woods") && (
+                {(section === "projects" ||
+                  section === "services" ||
+                  section === "woods") && (
                   <div className="admin-field admin-upload-field">
                     <label htmlFor="admin-cover-upload">
                       {section === "projects"
                         ? "Zdjęcie główne"
-                        : section === "woods" ? "Zdjęcie drewna" : "Zdjęcie usługi"}
+                        : section === "woods"
+                          ? "Zdjęcie drewna"
+                          : "Zdjęcie usługi"}
                     </label>
                     {coverId && (
                       <div className="admin-cover-preview">
@@ -952,69 +1052,85 @@ export function AdminDashboard() {
                   <p className="eyebrow">PODGLĄD NA ŻYWO</p>
                   {section === "woods" ? (
                     <div className="admin-preview-wood">
-                      <WoodCard index={0} wood={{
-                        title: previewTitle || "Gatunek drewna",
-                        tone: woodDetails.tone || "Ton drewna",
-                        grain: woodDetails.grain || "Usłojenie",
-                        character: woodDetails.character || "Charakterystyka drewna",
-                        imageUrl: coverId ? `/api/media/${encodeURIComponent(coverId)}` : null,
-                      }} />
+                      <WoodCard
+                        index={0}
+                        wood={{
+                          title: previewTitle || "Gatunek drewna",
+                          tone: woodDetails.tone || "Ton drewna",
+                          grain: woodDetails.grain || "Usłojenie",
+                          character:
+                            woodDetails.character || "Charakterystyka drewna",
+                          imageUrl: coverId
+                            ? `/api/media/${encodeURIComponent(coverId)}`
+                            : null,
+                        }}
+                      />
                     </div>
                   ) : (
-                  <div
-                    className={
-                      section === "projects"
-                        ? "admin-preview-project"
-                        : "admin-preview-service"
-                    }
-                  >
-                    {section === "projects" && (
-                      <p className="eyebrow">
-                        {String(editing?.category ?? "REALIZACJA")}
-                      </p>
-                    )}
-                    <h2>
-                      {previewTitle ||
-                        (section === "projects"
-                          ? "Nazwa projektu"
-                          : "Nazwa usługi")}
-                    </h2>
-                    {section === "projects" && Boolean(editing?.short_description) && (
-                      <p>{String(editing?.short_description)}</p>
-                    )}
-                    {coverId && (
-                      <Image
-                        alt=""
-                        width={400}
-                        height={260}
-                        src={`/api/media/${encodeURIComponent(coverId)}`}
-                      />
-                    )}
-                    {section === "services" ? (
-                      <OfferDescription
-                        shortDescription={typeof editing?.short_description === "string" ? editing.short_description : null}
-                        content={previewDescription}
-                      />
-                    ) : previewDescription && <p>{previewDescription}</p>}
-                    {section === "projects" && galleryIds.length > 0 && (
-                      <div className="admin-preview-gallery">
-                        {galleryIds.map((id) => (
-                          <Image
-                            alt=""
-                            key={id}
-                            width={160}
-                            height={110}
-                            src={`/api/media/${encodeURIComponent(id)}`}
+                    <div
+                      className={
+                        section === "projects"
+                          ? "admin-preview-project"
+                          : "admin-preview-service"
+                      }
+                    >
+                      <h2>
+                        {previewTitle ||
+                          (section === "projects"
+                            ? "Nazwa projektu"
+                            : "Nazwa usługi")}
+                      </h2>
+                      {section === "projects" &&
+                        Boolean(editing?.short_description) && (
+                          <p>{String(editing?.short_description)}</p>
+                        )}
+                      {coverId && (
+                        <Image
+                          alt=""
+                          width={400}
+                          height={260}
+                          src={`/api/media/${encodeURIComponent(coverId)}`}
+                        />
+                      )}
+                      {section === "services" ? (
+                        <>
+                          <OfferDescription
+                            shortDescription={
+                              typeof editing?.short_description === "string"
+                                ? editing.short_description
+                                : null
+                            }
+                            content={previewDescription}
                           />
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                          <OfferPrice price={previewPrice} />
+                        </>
+                      ) : section === "carpentry_services" ? (
+                        <>
+                          {previewDescription && <p>{previewDescription}</p>}
+                          <OfferPrice price={previewPrice} />
+                        </>
+                      ) : previewDescription ? (
+                        <p>{previewDescription}</p>
+                      ) : null}
+                      {section === "projects" && galleryIds.length > 0 && (
+                        <div className="admin-preview-gallery">
+                          {galleryIds.map((id) => (
+                            <Image
+                              alt=""
+                              key={id}
+                              width={160}
+                              height={110}
+                              src={`/api/media/${encodeURIComponent(id)}`}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </aside>
               )}
             </div>
-          )}
+          ) : null}
 
           {section === "messages" ? (
             <MessageInbox
@@ -1023,7 +1139,9 @@ export function AdminDashboard() {
               pending={pending}
               onOpen={(item) => void openMessage(item)}
               onDelete={(item) => void deleteMessage(item)}
-              onStatusChange={(item, status) => void updateMessageStatus(item, status)}
+              onStatusChange={(item, status) =>
+                void updateMessageStatus(item, status)
+              }
             />
           ) : null}
         </section>

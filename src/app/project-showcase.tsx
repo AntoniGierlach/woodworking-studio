@@ -29,7 +29,7 @@ export default async function ProjectShowcase() {
         <Images aria-hidden="true" className="empty-index" size={34} />
         <div>
           <p className="empty-title">Pierwsze realizacje pojawią się tutaj</p>
-          <p>Zapraszamy wkrótce do galerii projektów pracowni.</p>
+          <p>Zapraszamy wkrótce do galerii projektów warsztatu.</p>
         </div>
         <Link href="/realizacje">Zobacz realizacje</Link>
       </div>
