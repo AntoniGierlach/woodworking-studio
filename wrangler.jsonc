@@ -7,12 +7,18 @@
   "compatibility_flags": ["nodejs_compat"],
   "assets": {
     "directory": ".open-next/assets",
-    "binding": "ASSETS"
+    "binding": "ASSETS",
   },
   "vars": {
     "PUBLIC_MEDIA_STORAGE": "cloudflare",
     "CONTACT_ATTACHMENT_STORAGE": "cloudflare",
-    "CONTACT_TRUST_CLOUDFLARE_IP": "true"
+    "CONTACT_TRUST_CLOUDFLARE_IP": "true",
+    "CONTACT_MAX_FILES": 5,
+    "CONTACT_MAX_FILE_SIZE_MB": 10,
+    "CONTACT_MAX_TOTAL_SIZE_MB": 30,
+    "CONTACT_RATE_LIMIT_MAX": 5,
+    "CONTACT_RATE_LIMIT_WINDOW_MS": 60000,
+    "EMAIL_FROM": "Skibisztat <skibisztat.powiadomienia@resend.dev>"
   },
   "d1_databases": [
     {
@@ -20,13 +26,13 @@
       "database_name": "woodworking-studio",
       // Replace with the database ID from the Cloudflare dashboard.
       "database_id": "a90b688f-89c5-4d84-af56-cefc63935290",
-      "migrations_dir": "d1-migrations"
-    }
+      "migrations_dir": "d1-migrations",
+    },
   ],
   "r2_buckets": [
     {
       "binding": "FILES",
-      "bucket_name": "woodworking-studio-files"
-    }
-  ]
+      "bucket_name": "woodworking-studio-files",
+    },
+  ],
 }
