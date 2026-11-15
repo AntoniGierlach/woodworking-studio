@@ -301,11 +301,11 @@ export function AdminDashboard() {
           data,
         }),
       });
-      const result = (await response.json()) as { error?: string };
+      const result = (await response.json()) as { error?: string; warning?: string };
       if (!response.ok)
         throw new Error(result.error ?? "Nie udało się zapisać.");
       selectItem(null);
-      setNotice("Zapisano zmiany.");
+      setNotice(result.warning ? `Zapisano zmiany. ${result.warning}` : "Zapisano zmiany.");
       form.reset();
       await loadItems();
     } catch (saveError) {
@@ -327,11 +327,11 @@ export function AdminDashboard() {
         `/api/admin/content?type=${section}&id=${encodeURIComponent(item.id)}`,
         { method: "DELETE" },
       );
-      const result = (await response.json()) as { error?: string };
+      const result = (await response.json()) as { error?: string; warning?: string };
       if (!response.ok)
         throw new Error(result.error ?? "Nie udało się usunąć wpisu.");
       if (editing?.id === item.id) selectItem(null);
-      setNotice("Usunięto wpis.");
+      setNotice(result.warning ? `Usunięto wpis. ${result.warning}` : "Usunięto wpis.");
       await loadItems();
     } catch (deleteError) {
       setError(

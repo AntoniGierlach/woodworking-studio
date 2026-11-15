@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/admin-session";
 import { batch, query } from "@/lib/db";
 import { isSameOrigin } from "@/lib/request-security";
 import { deleteContactAttachment } from "@/lib/contact-attachment-storage";
+import { deletePublicMedia } from "@/lib/public-media-storage";
 import { randomUUID } from "node:crypto";
 
 const recordStatus = z.enum(["draft", "published"]);
@@ -90,6 +91,74 @@ const tables: Record<Exclude<ContentType, "settings">, string> = {
   woods: "app_wood_types",
   messages: "app_messages",
 };
+
+const mediaReferences = {
+  services: "SELECT image_id FROM app_services WHERE id = $1",
+  woods: "SELECT image_id FROM app_wood_types WHERE id = $1",
+  projects: `SELECT cover_image_id FROM app_projects WHERE id = $1
+             UNION SELECT media_id FROM app_project_images WHERE project_id = $1`,
+} as const;
+
+type MediaContentType = keyof typeof mediaReferences;
+
+function isMediaContentType(type: ContentType): type is MediaContentType {
+  return type === "services" || type === "woods" || type === "projects";
+}
+
+function queueMedia(type: MediaContentType, id: string) {
+  return {
+    sql: `INSERT OR IGNORE INTO app_media_deletion_queue (storage_key)
+          SELECT storage_key FROM app_media WHERE id IN (${mediaReferences[type]})`,
+    values: [id],
+  };
+}
+
+const retainReferencedMedia = {
+  sql: `DELETE FROM app_media_deletion_queue WHERE storage_key IN (
+          SELECT m.storage_key FROM app_media m
+          WHERE EXISTS (SELECT 1 FROM app_services s WHERE s.image_id = m.id)
+             OR EXISTS (SELECT 1 FROM app_wood_types w WHERE w.image_id = m.id)
+             OR EXISTS (SELECT 1 FROM app_projects p WHERE p.cover_image_id = m.id)
+             OR EXISTS (SELECT 1 FROM app_project_images i WHERE i.media_id = m.id)
+        )`,
+};
+const removeQueuedMedia = {
+  sql: "DELETE FROM app_media WHERE storage_key IN (SELECT storage_key FROM app_media_deletion_queue)",
+};
+
+async function cleanupQueuedMedia(): Promise<string | undefined> {
+  try {
+    const queued = await query<{ storage_key: string }>(
+      "SELECT storage_key FROM app_media_deletion_queue ORDER BY queued_at, storage_key LIMIT 25",
+    );
+    let failed = false;
+    for (const { storage_key } of queued.rows) {
+      try {
+        await deletePublicMedia(storage_key);
+        await query("DELETE FROM app_media_deletion_queue WHERE storage_key = $1", [storage_key]);
+      } catch (error) {
+        failed = true;
+        console.error(JSON.stringify({
+          event: "admin_media_cleanup_failed",
+          reason: error instanceof Error ? error.message : "unknown",
+        }));
+      }
+    }
+    if (failed) {
+      return "Nie udało się usunąć części zdjęć z magazynu. Operacja zostanie ponowiona przy kolejnej edycji lub usunięciu realizacji, usługi lub gatunku drewna.";
+    }
+    const remaining = await query("SELECT 1 FROM app_media_deletion_queue LIMIT 1");
+    if (remaining.rows.length) {
+      return "Część zdjęć czeka na usunięcie. Operacja zostanie ponowiona przy kolejnej edycji lub usunięciu realizacji, usługi lub gatunku drewna.";
+    }
+  } catch (error) {
+    console.error(JSON.stringify({
+      event: "admin_media_cleanup_failed",
+      reason: error instanceof Error ? error.message : "unknown",
+    }));
+    return "Nie udało się usunąć części zdjęć z magazynu. Operacja zostanie ponowiona przy kolejnej edycji lub usunięciu realizacji, usługi lub gatunku drewna.";
+  }
+}
 
 function isContentType(value: string): value is ContentType {
   return Object.hasOwn(contentSchemas, value);
@@ -321,23 +390,35 @@ export async function PATCH(request: NextRequest) {
       assignments.push("date_updated = CURRENT_TIMESTAMP");
       const updateSql = `UPDATE ${tables[type]} SET ${assignments.join(", ")}
          WHERE id = $${values.length + 1} RETURNING id`;
-      result =
-        type === "projects" && galleryIds !== undefined
-          ? (await batch([
-              { sql: updateSql, values: [...values, id] },
-              { sql: "DELETE FROM app_project_images WHERE project_id = $1", values: [id] },
-              ...galleryIds.map((mediaId, sort) => ({
-                sql: `INSERT INTO app_project_images (id, project_id, media_id, sort)
-                      SELECT $1, $2, $3, $4 WHERE EXISTS (SELECT 1 FROM app_projects WHERE id = $2)`,
-                values: [randomUUID(), id, mediaId, sort],
-              })),
-            ]))[0]
-          : await query(updateSql, [...values, id]);
+      const changesMedia = isMediaContentType(type) && (
+        (type === "projects" && (galleryIds !== undefined || "cover_image_id" in parsed.data)) ||
+        (type !== "projects" && "image_id" in parsed.data)
+      );
+      if (changesMedia && isMediaContentType(type)) {
+        const results = await batch([
+          queueMedia(type, id),
+          { sql: updateSql, values: [...values, id] },
+          ...(type === "projects" && galleryIds !== undefined ? [
+            { sql: "DELETE FROM app_project_images WHERE project_id = $1", values: [id] },
+            ...galleryIds.map((mediaId, sort) => ({
+              sql: `INSERT INTO app_project_images (id, project_id, media_id, sort)
+                    SELECT $1, $2, $3, $4 WHERE EXISTS (SELECT 1 FROM app_projects WHERE id = $2)`,
+              values: [randomUUID(), id, mediaId, sort],
+            })),
+          ] : []),
+          retainReferencedMedia,
+          removeQueuedMedia,
+        ]);
+        result = results[1];
+      } else {
+        result = await query(updateSql, [...values, id]);
+      }
     }
     if (!result.rowCount) {
       return NextResponse.json({ error: "Content not found." }, { status: 404 });
     }
-    return NextResponse.json({ data: result.rows[0] });
+    const warning = isMediaContentType(type) ? await cleanupQueuedMedia() : undefined;
+    return NextResponse.json({ data: result.rows[0], ...(warning && { warning }) });
   } catch (error) {
     return handleWriteError(error, type);
   }
@@ -380,11 +461,19 @@ export async function DELETE(request: NextRequest) {
     }
   }
   try {
-    const result = await query(`DELETE FROM ${tables[type]} WHERE id = $1`, [id]);
+    const result = isMediaContentType(type)
+      ? (await batch([
+          queueMedia(type, id),
+          { sql: `DELETE FROM ${tables[type]} WHERE id = $1`, values: [id] },
+          retainReferencedMedia,
+          removeQueuedMedia,
+        ]))[1]
+      : await query(`DELETE FROM ${tables[type]} WHERE id = $1`, [id]);
     if (!result.rowCount) {
       return NextResponse.json({ error: "Content not found." }, { status: 404 });
     }
-    return NextResponse.json({ deleted: true });
+    const warning = isMediaContentType(type) ? await cleanupQueuedMedia() : undefined;
+    return NextResponse.json({ deleted: true, ...(warning && { warning }) });
   } catch (error) {
     return handleWriteError(error, type);
   }

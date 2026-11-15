@@ -8,12 +8,13 @@ import { getPlatformProxy } from "wrangler";
 const state = vi.hoisted(() => ({
   db: undefined as unknown,
   deleteAttachment: vi.fn(),
+  deletePublicMedia: vi.fn(),
   writeAttachment: vi.fn(),
   send: vi.fn(),
 }));
 vi.mock("server-only", () => ({}));
 vi.mock("@opennextjs/cloudflare", () => ({
-  getCloudflareContext: () => ({ env: { DB: state.db } }),
+  getCloudflareContext: async () => ({ env: { DB: state.db } }),
 }));
 vi.mock("@/lib/admin-session", () => ({
   requireAdmin: async () => true,
@@ -30,13 +31,16 @@ vi.mock("@/lib/contact-attachment-storage", () => ({
   writeContactAttachment: state.writeAttachment,
   deleteContactAttachment: state.deleteAttachment,
 }));
+vi.mock("@/lib/public-media-storage", () => ({
+  deletePublicMedia: state.deletePublicMedia,
+}));
 vi.mock("resend", () => ({
   Resend: class { emails = { send: state.send }; },
 }));
 
 import { query } from "./db";
 import { getContentCollection } from "./content-data";
-import { GET, PATCH, POST } from "../app/api/admin/content/route";
+import { DELETE, GET, PATCH, POST } from "../app/api/admin/content/route";
 import { PATCH as reorder } from "../app/api/admin/content/order/route";
 import { POST as contact } from "../app/api/contact/route";
 import { POST as login } from "../app/api/admin/login/route";
@@ -63,9 +67,11 @@ describe("Cloudflare D1 integration", () => {
     }));
     proxy = await getPlatformProxy<TestEnv>({ persist: false, configPath: testConfig });
     state.db = proxy.env.DB;
-    const schema = await readFile("d1-migrations/0001_initial.sql", "utf8");
-    for (const statement of schema.split(";").map((part) => part.trim()).filter(Boolean)) {
-      await proxy.env.DB.exec(statement.replace(/\s+/g, " "));
+    for (const migration of ["0001_initial.sql", "0002_media_deletion_queue.sql"]) {
+      const schema = await readFile(`d1-migrations/${migration}`, "utf8");
+      for (const statement of schema.split(";").map((part) => part.trim()).filter(Boolean)) {
+        await proxy.env.DB.exec(statement.replace(/\s+/g, " "));
+      }
     }
   }, 30_000);
   afterAll(async () => {
@@ -136,6 +142,48 @@ describe("Cloudflare D1 integration", () => {
     expect(messages[0]).toMatchObject({ name: "Anna", is_read: false, attachments: [{ filename: "projekt.pdf" }] });
     expect(state.writeAttachment).toHaveBeenCalledOnce();
     expect(state.send).toHaveBeenCalledOnce();
+  }, 30_000);
+
+  it("keeps shared photos and retries deletion after storage failure", async () => {
+    const mediaId = crypto.randomUUID();
+    const key = `public-media/${crypto.randomUUID()}.png`;
+    await query(
+      "INSERT INTO app_media (id, storage_key, original_filename, mime_type, size_bytes, visibility) VALUES ($1,$2,'a.png','image/png',1,'public')",
+      [mediaId, key],
+    );
+    const project = await POST(request("POST", {
+      type: "projects",
+      data: { title: "Shared project", slug: `project-${mediaId}`, cover_image_id: mediaId, gallery_media_ids: [mediaId] },
+    }));
+    const projectId = (await project.json()).data.id as string;
+    const service = await POST(request("POST", {
+      type: "services",
+      data: { title: "Shared service", slug: `service-${mediaId}`, image_id: mediaId },
+    }));
+    const serviceId = (await service.json()).data.id as string;
+
+    const updated = await PATCH(request("PATCH", {
+      type: "projects", id: projectId, data: { cover_image_id: null, gallery_media_ids: [] },
+    }));
+    expect(updated.status).toBe(200);
+    expect(state.deletePublicMedia).not.toHaveBeenCalledWith(key);
+
+    state.deletePublicMedia.mockRejectedValueOnce(new Error("storage unavailable"));
+    const deleted = await DELETE(new NextRequest(
+      `https://example.com/api/admin/content?type=services&id=${serviceId}`,
+      { method: "DELETE" },
+    ));
+    expect(deleted.status).toBe(200);
+    expect((await deleted.json()).warning).toBeTruthy();
+    expect((await query("SELECT storage_key FROM app_media_deletion_queue WHERE storage_key = $1", [key])).rows).toHaveLength(1);
+
+    const retry = await PATCH(request("PATCH", {
+      type: "projects", id: projectId, data: { title: "Retry cleanup" },
+    }));
+    expect(retry.status).toBe(200);
+    expect(state.deletePublicMedia).toHaveBeenCalledWith(key);
+    expect((await query("SELECT storage_key FROM app_media_deletion_queue WHERE storage_key = $1", [key])).rows).toHaveLength(0);
+    expect((await query("SELECT id FROM app_media WHERE id = $1", [mediaId])).rows).toHaveLength(0);
   }, 30_000);
 
   it("enforces contact rate limits per trusted client", async () => {

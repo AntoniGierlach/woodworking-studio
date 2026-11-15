@@ -64,7 +64,11 @@ export async function deletePublicMedia(key: string): Promise<void> {
     return deleteCloudflareFile(key);
   }
   if (key.startsWith("local-media/")) {
-    await unlink(localPath(key));
+    try {
+      await unlink(localPath(key));
+    } catch (error) {
+      if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) throw error;
+    }
     return;
   }
   const storage = createObjectStorage();

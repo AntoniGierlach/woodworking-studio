@@ -20,8 +20,9 @@ declare global {
   }
 }
 
-function database(): D1Binding {
-  const { DB } = getCloudflareContext().env;
+async function database(): Promise<D1Binding> {
+  const { env } = await getCloudflareContext({ async: true });
+  const { DB } = env;
   if (!DB) throw new Error("Cloudflare D1 binding DB is not configured.");
   return DB;
 }
@@ -38,7 +39,7 @@ export async function query<Row = Record<string, unknown>>(
   sql: string,
   values: readonly Value[] = [],
 ): Promise<{ rows: Row[]; rowCount: number }> {
-  const result = await prepare(database(), { sql, values }).all<Row>();
+  const result = await prepare(await database(), { sql, values }).all<Row>();
   return { rows: result.results, rowCount: result.meta.changes || result.results.length };
 }
 
@@ -46,7 +47,7 @@ export async function batch<Row = Record<string, unknown>>(
   statements: readonly Statement[],
 ): Promise<Array<{ rows: Row[]; rowCount: number }>> {
   if (statements.length === 0) return [];
-  const db = database();
+  const db = await database();
   const results = await db.batch<Row>(statements.map((statement) => prepare(db, statement)));
   return results.map((result) => ({
     rows: result.results,
