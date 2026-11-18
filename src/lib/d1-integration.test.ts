@@ -39,7 +39,7 @@ vi.mock("resend", () => ({
 }));
 
 import { query } from "./db";
-import { getContentCollection } from "./content-data";
+import { getContentCollection, getWoodTypes } from "./content-data";
 import { DELETE, GET, PATCH, POST } from "../app/api/admin/content/route";
 import { PATCH as reorder } from "../app/api/admin/content/order/route";
 import { POST as contact } from "../app/api/contact/route";
@@ -72,6 +72,15 @@ describe("Cloudflare D1 integration", () => {
       for (const statement of schema.split(";").map((part) => part.trim()).filter(Boolean)) {
         await proxy.env.DB.exec(statement.replace(/\s+/g, " "));
       }
+      if (migration === "0001_initial.sql") {
+        await proxy.env.DB.exec(
+          "INSERT INTO app_wood_types (id, title, tone, grain, character, status) VALUES ('migration-seed', 'Dąb testowy', 'Ciepły', 'Wyraźne', 'Opis zachowany', 'draft')",
+        );
+      }
+    }
+    const woodMigration = await readFile("d1-migrations/0003_wood_descriptions.sql", "utf8");
+    for (const statement of woodMigration.split(";").map((part) => part.trim()).filter(Boolean)) {
+      await proxy.env.DB.exec(statement.replace(/\s+/g, " "));
     }
   }, 30_000);
   afterAll(async () => {
@@ -126,6 +135,28 @@ describe("Cloudflare D1 integration", () => {
     expect(invalid.status).toBe(422);
     const unchanged = await query<{ title: string }>("SELECT title FROM app_projects WHERE id = $1", [firstId]);
     expect(unchanged.rows[0].title).toBe("First");
+  }, 30_000);
+
+  it("stores and reads wood descriptions using the migrated D1 schema", async () => {
+    const preserved = await query<{ description: string }>(
+      "SELECT description FROM app_wood_types WHERE id = $1",
+      ["migration-seed"],
+    );
+    expect(preserved.rows[0].description).toBe("Opis zachowany");
+
+    const response = await POST(request("POST", {
+      type: "woods",
+      data: { title: "Dąb", description: "Twarde, trwałe drewno.", status: "published" },
+    }));
+    expect(response.status).toBe(201);
+    const wood = await query<{ id: string; description: string }>(
+      "SELECT id, description FROM app_wood_types WHERE title = $1",
+      ["Dąb"],
+    );
+    expect(wood.rows[0].description).toBe("Twarde, trwałe drewno.");
+    expect(await getWoodTypes()).toEqual([
+      { id: wood.rows[0].id, title: "Dąb", description: "Twarde, trwałe drewno.", image_id: null },
+    ]);
   }, 30_000);
 
   it("saves a contact message and private attachment and lists a boolean read state", async () => {

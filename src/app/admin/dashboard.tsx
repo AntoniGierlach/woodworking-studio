@@ -34,7 +34,6 @@ import WoodCard from "../wood-card";
 import MessageInbox from "./message-inbox";
 
 type ContentType =
-  | "carpentry_services"
   | "services"
   | "projects"
   | "woods"
@@ -43,7 +42,6 @@ type ContentType =
 type RecordItem = Record<string, unknown> & { id?: string | number };
 
 const sections: Array<{ id: ContentType; label: string }> = [
-  { id: "carpentry_services", label: "Usługi stolarskie" },
   { id: "services", label: "Oferta" },
   { id: "projects", label: "Realizacje" },
   { id: "woods", label: "Drewno" },
@@ -62,21 +60,6 @@ const fields: Record<
     hint?: string;
   }>
 > = {
-  carpentry_services: [
-    { name: "title", label: "Nazwa usługi", required: true, maxLength: 255 },
-    {
-      name: "description",
-      label: "Opis usługi",
-      type: "textarea",
-      required: true,
-      maxLength: 100_000,
-    },
-    {
-      name: "price",
-      label: "Cena lub przedział cenowy",
-      maxLength: 120,
-    },
-  ],
   services: [
     { name: "title", label: "Nazwa usługi", required: true },
     {
@@ -92,9 +75,7 @@ const fields: Record<
   ],
   woods: [
     { name: "title", label: "Gatunek drewna", required: true },
-    { name: "tone", label: "Ton", required: true },
-    { name: "grain", label: "Usłojenie", required: true },
-    { name: "character", label: "Charakterystyka", required: true },
+    { name: "description", label: "Opis", type: "textarea", required: true, maxLength: 10_000 },
   ],
   settings: [
     { name: "company_name", label: "Nazwa warsztatu" },
@@ -164,11 +145,7 @@ export function AdminDashboard() {
   const [previewPrice, setPreviewPrice] = useState("");
   const [slugOverride, setSlugOverride] = useState<string | null>(null);
   const [previewDescription, setPreviewDescription] = useState("");
-  const [woodDetails, setWoodDetails] = useState({
-    tone: "",
-    grain: "",
-    character: "",
-  });
+  const [woodDescription, setWoodDescription] = useState("");
   const [editorVersion, setEditorVersion] = useState(0);
   const draggedId = useRef<string | null>(null);
   const [dragTarget, setDragTarget] = useState<string | null>(null);
@@ -189,11 +166,7 @@ export function AdminDashboard() {
       String(item?.[type === "services" ? "content" : "description"] ?? ""),
     );
     setPreviewPrice(String(item?.price ?? ""));
-    setWoodDetails({
-      tone: String(item?.tone ?? ""),
-      grain: String(item?.grain ?? ""),
-      character: String(item?.character ?? ""),
-    });
+    setWoodDescription(String(item?.description ?? ""));
     setCoverId(
       String(item?.[type === "projects" ? "cover_image_id" : "image_id"] ?? ""),
     );
@@ -271,7 +244,7 @@ export function AdminDashboard() {
     }
     if (section !== "settings") {
       data.status = String(formData.get("status") ?? "draft");
-      if (section !== "woods" && section !== "carpentry_services") {
+      if (section !== "woods") {
         const slug = String(formData.get("slug") ?? "").trim();
         if (slug.length > 100 || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
           setError(
@@ -647,9 +620,7 @@ export function AdminDashboard() {
                       ? "Lista realizacji"
                       : section === "woods"
                         ? "Lista gatunków drewna"
-                        : section === "carpentry_services"
-                          ? "Lista usług stolarskich"
-                          : "Lista ofert"
+                        : "Lista ofert"
                   }
                   className="admin-record-list"
                 >
@@ -826,13 +797,14 @@ export function AdminDashboard() {
                           <textarea
                             {...common}
                             onChange={(event) => {
-                              if (
-                                field.name === "content" ||
-                                field.name === "description"
-                              )
+                              if (field.name === "content")
                                 setPreviewDescription(
                                   event.currentTarget.value,
                                 );
+                              if (field.name === "description" && section === "woods")
+                                setWoodDescription(event.currentTarget.value);
+                              else if (field.name === "description")
+                                setPreviewDescription(event.currentTarget.value);
                             }}
                             rows={
                               field.name === "content" ||
@@ -849,17 +821,8 @@ export function AdminDashboard() {
                                 setPreviewTitle(event.currentTarget.value);
                               if (field.name === "price")
                                 setPreviewPrice(event.currentTarget.value);
-                              if (
-                                field.name === "tone" ||
-                                field.name === "grain" ||
-                                field.name === "character"
-                              ) {
-                                const value = event.currentTarget.value;
-                                setWoodDetails((current) => ({
-                                  ...current,
-                                  [field.name]: value,
-                                }));
-                              }
+                              if (field.name === "description" && section === "woods")
+                                setWoodDescription(event.currentTarget.value);
                             }}
                             type={field.type ?? "text"}
                           />
@@ -870,8 +833,7 @@ export function AdminDashboard() {
                   })}
                   {section !== "settings" && (
                     <div className="admin-publication-fields">
-                      {section !== "woods" &&
-                        section !== "carpentry_services" && (
+                      {section !== "woods" && (
                           <label className="admin-field">
                             Adres (slug)
                             <input
@@ -1056,10 +1018,7 @@ export function AdminDashboard() {
                         index={0}
                         wood={{
                           title: previewTitle || "Gatunek drewna",
-                          tone: woodDetails.tone || "Ton drewna",
-                          grain: woodDetails.grain || "Usłojenie",
-                          character:
-                            woodDetails.character || "Charakterystyka drewna",
+                          description: woodDescription || "Opis gatunku drewna",
                           imageUrl: coverId
                             ? `/api/media/${encodeURIComponent(coverId)}`
                             : null,
@@ -1102,11 +1061,6 @@ export function AdminDashboard() {
                             }
                             content={previewDescription}
                           />
-                          <OfferPrice price={previewPrice} />
-                        </>
-                      ) : section === "carpentry_services" ? (
-                        <>
-                          {previewDescription && <p>{previewDescription}</p>}
                           <OfferPrice price={previewPrice} />
                         </>
                       ) : previewDescription ? (

@@ -18,10 +18,10 @@ describe("publiczne gatunki drewna", () => {
   beforeEach(() => vi.resetAllMocks());
 
   it("wyświetla zapisane gatunki i zdjęcia", async () => {
-    mocks.getWoodTypes.mockResolvedValue([{ id: "1", title: "Dąb", tone: "Jasny", grain: "Wyraźne", character: "Naturalny", image_id: "zdjecie" }]);
+    mocks.getWoodTypes.mockResolvedValue([{ id: "1", title: "Dąb", description: "Naturalny i trwały.", image_id: "zdjecie" }]);
     const html = renderToStaticMarkup(await WoodShowcase());
     expect(html).toContain("Dąb");
-    expect(html).toContain("Naturalny");
+    expect(html).toContain("Naturalny i trwały.");
     expect(html).toContain('src="/api/media/zdjecie"');
   });
 

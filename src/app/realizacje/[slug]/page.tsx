@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import ContentNotice from "../../content-notice";
@@ -9,6 +8,7 @@ import {
   getContentUnavailableNotice,
 } from "@/lib/content-data";
 import { SiteLayout } from "../../site-chrome";
+import ProjectImageViewer from "./project-image-viewer";
 
 type AssetReference = string | { id: string };
 
@@ -34,7 +34,7 @@ type ProjectPageProps = {
 export async function generateMetadata({
 }: ProjectPageProps): Promise<Metadata> {
   return {
-    title: `Quercus Fagus | Realizacja`,
+    title: `Puszczawik | Realizacja`,
   };
 }
 
@@ -80,43 +80,26 @@ export default async function ProjectDetailPage({ params }: ProjectPageProps) {
             <p>{project.short_description}</p>
           )}
         </div>
-        {project.cover_image && (
-          <figure className="page-width project-detail-cover">
-            <Image
-              alt={`${project.title} — zdjęcie realizacji`}
-              fill
-              priority
-              sizes="(max-width: 760px) 100vw, 90vw"
-              src={getContentAssetUrl(
-                typeof project.cover_image === "string"
-                  ? project.cover_image
-                  : project.cover_image.id,
-              )}
-            />
-          </figure>
-        )}
+        <ProjectImageViewer
+          title={project.title}
+          cover={project.cover_image ? {
+            alt: `${project.title} - zdjęcie realizacji`,
+            src: getContentAssetUrl(
+              typeof project.cover_image === "string"
+                ? project.cover_image
+                : project.cover_image.id,
+            ),
+          } : null}
+          images={(project.project_images ?? []).map((image) => ({
+            alt: image.alt?.trim() || project.title,
+            src: getContentAssetUrl(
+              typeof image.file === "string" ? image.file : image.file.id,
+            ),
+          }))}
+        />
         {project.description && (
           <div className="page-width project-detail-copy">
             <p>{project.description}</p>
-          </div>
-        )}
-        {project.project_images && project.project_images.length > 0 && (
-          <div
-            aria-label={`Galeria realizacji: ${project.title}`}
-            className="page-width project-detail-gallery"
-          >
-            {project.project_images.map((image) => (
-              <figure key={image.id}>
-                <Image
-                  alt={image.alt?.trim() || project.title}
-                  fill
-                  sizes="(max-width: 760px) 100vw, 50vw"
-                  src={getContentAssetUrl(
-                    typeof image.file === "string" ? image.file : image.file.id,
-                  )}
-                />
-              </figure>
-            ))}
           </div>
         )}
         <div className="page-width studio-callout">

@@ -3,7 +3,7 @@ import { SiteLayout } from "../site-chrome";
 import { getSiteSettings } from "@/lib/site-settings";
 
 export const metadata: Metadata = {
-  title: "Quercus Fagus | Informacja o prywatności",
+  title: "Puszczawik | Informacja o prywatności",
   robots: { index: false, follow: false },
 };
 

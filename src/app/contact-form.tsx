@@ -148,7 +148,7 @@ export default function ContactForm() {
           field_too_large:
             "Jedno z pól formularza zawiera zbyt dużo tekstu.",
           contact_submission_failed:
-            "Nie udało się zapisać wiadomości. Dane nie zostały wysłane — spróbuj ponownie.",
+            "Nie udało się zapisać wiadomości. Dane nie zostały wysłane - spróbuj ponownie.",
         };
         setSubmission({
           kind: "error",
@@ -172,7 +172,7 @@ export default function ContactForm() {
       setSubmission({
         kind: "error",
         message:
-          "Nie udało się połączyć z formularzem. Twoje dane pozostały na stronie — spróbuj ponownie.",
+          "Nie udało się połączyć z formularzem. Twoje dane pozostały na stronie - spróbuj ponownie.",
       });
     }
   }

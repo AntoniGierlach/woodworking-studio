@@ -5,7 +5,7 @@ import { SiteLayout } from "../site-chrome";
 import ContactDetails from "./contact-details";
 
 export const metadata: Metadata = {
-  title: "Quercus Fagus | Kontakt",
+  title: "Puszczawik | Kontakt",
   description:
     "Opowiedz o swoim pomyśle na mebel z naturalnego drewna. Wyślij zapytanie do pracowni.",
 };

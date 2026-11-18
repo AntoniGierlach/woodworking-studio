@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, type CSSProperties } from "react";
-import { Pause, Play } from "lucide-react";
+import { Images, Pause, Play } from "lucide-react";
 import WoodCard, { type WoodCardData } from "./wood-card";
 
 type Wood = WoodCardData & { id: string };
@@ -13,7 +13,15 @@ export default function WoodCarousel({ woods }: { woods: Wood[] }) {
   const animated = woods.length > 2;
   const cards = () => woods.map((wood, index) => <WoodCard key={wood.id} wood={wood} index={index} />);
 
-  if (!woods.length) return <p className="wood-empty">Gatunki drewna pojawią się wkrótce.</p>;
+  if (!woods.length) return (
+      <div className="offer-empty">
+        <Images aria-hidden="true" className="empty-index" size={34} />
+        <div>
+          <p className="empty-title">Gatunki drewna pojawią się wkrótce.</p>
+          <p></p>
+        </div>
+      </div>
+    );
 
   return (
     <div className={`wood-carousel${animated ? " wood-carousel-moving" : ""}${paused ? " is-paused" : ""}`}>

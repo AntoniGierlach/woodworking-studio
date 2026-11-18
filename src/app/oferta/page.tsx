@@ -75,7 +75,7 @@ export default async function OfferPage() {
         </div>
         <OfferList>
           {services.length === 0 ? (
-            <div className="content-notice offer-empty">
+            <div className="content-notice offer-page-empty">
               <h2>Lista usług jest w przygotowaniu</h2>
               <p>
                 Gdy warsztat opublikuje usługi, znajdziesz je w tym miejscu.

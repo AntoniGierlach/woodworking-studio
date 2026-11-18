@@ -9,7 +9,6 @@ import backgroundImage from "../../storage/background2-cloudflare.jpg";
 import carpentryLogo from "../../storage/carpentry.png";
 
 export const navigation = [
-  { href: "/uslugi-stolarskie", label: "Usługi stolarskie" },
   { href: "/oferta", label: "Oferta" },
   { href: "/realizacje", label: "Realizacje" },
 ];
@@ -74,7 +73,7 @@ export function SiteHeader() {
       <Link className="brand" href="/">
         <BrandMark />
         <span className="brand-copy">
-          <strong>Quercus Fagus</strong>
+          <strong>Stolarnia Puszczawik</strong>
           <span>MEBLE NA WYMIAR</span>
         </span>
       </Link>
@@ -105,7 +104,7 @@ export function SiteFooter() {
   return (
     <footer className="site-footer">
       <div className="footer-bottom page-width">
-        <Suspense fallback={<div className="footer-copy"><span>Copyright © Quercus Fagus</span></div>}>
+        <Suspense fallback={<div className="footer-copy"><span>Copyright © Puszczawik</span></div>}>
           <FooterContent />
         </Suspense>
       </div>
@@ -119,7 +118,7 @@ async function FooterContent() {
   const footerText = settings?.footer_text?.trim();
   return (
     <div className="footer-copy">
-      <span>Copyright © {settings?.company_name?.trim() || "Quercus Fagus"} <Suspense fallback={null}><CopyrightYear /></Suspense></span>
+      <span>Copyright © {settings?.company_name?.trim() || "Puszczawik"} <Suspense fallback={null}><CopyrightYear /></Suspense></span>
       {footerText && <span>{footerText}</span>}
     </div>
   );

@@ -101,7 +101,7 @@ export default function MessageCard({
         {notification === "sent"
           ? "wysłane"
           : notification === "failed"
-            ? "nie wysłano — sprawdź adres e-mail w ustawieniach i konfigurację poczty"
+            ? "nie wysłano - sprawdź adres e-mail w ustawieniach i konfigurację poczty"
             : "oczekuje"}
       </p>
       <button

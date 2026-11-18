@@ -31,7 +31,6 @@ export default async function ProjectShowcase() {
           <p className="empty-title">Pierwsze realizacje pojawią się tutaj</p>
           <p>Zapraszamy wkrótce do galerii projektów warsztatu.</p>
         </div>
-        <Link href="/realizacje">Zobacz realizacje</Link>
       </div>
     );
   }

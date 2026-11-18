@@ -97,7 +97,7 @@ export default async function Home() {
         <Suspense
           fallback={
             <p className="service-list-notice" role="status">
-              Ładowanie usług stolarskich…
+              Ładowanie oferty…
             </p>
           }
         >
@@ -140,19 +140,11 @@ export default async function Home() {
           <div className="wood-guide-heading">
             <div>
               <h2 id="wood-guide-title">
-                Nie każde drewno
-                <br />
-                <em>wygląda i zachowuje</em>
+                Nie każde drewno <em>wygląda i zachowuje</em>
                 <br />
                 się tak samo.
               </h2>
             </div>
-            <p>
-              Jasny jesion, klasyczny dąb, ciemniejszy orzech czy egzotyczne
-              gatunki o ciepłych, czerwonych odcieniach. Każde z nich ma inną
-              barwę, strukturę i usłojenie. Wybór drewna wpływa nie tylko na
-              wygląd mebla, ale też na jego ostateczny charakter.
-            </p>
           </div>
 
           <Suspense
@@ -181,7 +173,7 @@ export default async function Home() {
         <div className="about section-space page-width">
           <div className="about-visual">
             <Image
-              alt="Detal drewnianego wnętrza — zdjęcie poglądowe"
+              alt="Detal drewnianego wnętrza - zdjęcie poglądowe"
               className="about-image"
               fill
               sizes="(max-width: 540px) 100vw, 42vw"

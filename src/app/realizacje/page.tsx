@@ -10,7 +10,7 @@ import {
 import { SiteLayout } from "../site-chrome";
 
 export const metadata: Metadata = {
-  title: "Quercus Fagus | Realizacje",
+  title: "Puszczawik | Realizacje",
   description:
     "Galeria mebli z naturalnego drewna opublikowanych przez pracownię.",
 };
@@ -91,7 +91,7 @@ export default async function ProjectsPage() {
                   {project.cover_image ? (
                     <span className="project-card-image">
                       <Image
-                        alt={`${project.title} — zdjęcie realizacji`}
+                        alt={`${project.title} - zdjęcie realizacji`}
                         fill
                         sizes="(max-width: 760px) 100vw, 50vw"
                         src={getContentAssetUrl(

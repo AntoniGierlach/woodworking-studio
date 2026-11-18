@@ -12,9 +12,7 @@ import WoodCarousel from "./wood-carousel";
 const woods = ["Dąb", "Orzech", "Jesion"].map((title, index) => ({
   id: String(index),
   title,
-  tone: "Ciepły",
-  grain: "Wyraziste",
-  character: "Naturalny",
+  description: "Naturalny i trwały",
   imageUrl: index === 0 ? "/api/media/test" : null,
 }));
 
@@ -24,8 +22,10 @@ describe("gatunki drewna", () => {
     expect(html).toContain("Próbka drewna: Dąb");
     expect(html).toContain('<div class="wood-kind-image"><img');
     expect(html).toContain('data-fill="true"');
-    expect(html).toContain("<dt>Charakterystyka</dt>");
-    expect(html).not.toContain("<dt>Wrażenie</dt>");
+    expect(html).toContain("Naturalny i trwały");
+    expect(html).not.toContain("Ton");
+    expect(html).not.toContain("Usłojenie");
+    expect(html).not.toContain("Charakterystyka");
     expect(html).toContain('aria-label="Zatrzymaj przesuwanie"');
     expect(html).toContain("lucide-pause");
     expect(html).not.toContain(">Zatrzymaj przesuwanie</button>");

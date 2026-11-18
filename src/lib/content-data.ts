@@ -49,44 +49,13 @@ export interface ProjectPreview {
 export interface WoodType {
   id: string;
   title: string;
-  tone: string;
-  grain: string;
-  character: string;
-  image_id: string | null;
-}
-
-export interface CarpentryService {
-  id: string;
-  title: string;
   description: string;
-  price: string | null;
-}
-
-export async function getCarpentryServices(): Promise<
-  | { status: "available"; services: CarpentryService[] }
-  | { status: "unavailable" }
-> {
-  try {
-    const result = await query<CarpentryService>(
-      `SELECT id, title, description, price
-       FROM app_carpentry_services
-       WHERE status = 'published'
-       ORDER BY sort ASC, date_created DESC, id ASC
-       LIMIT 100`,
-    );
-    return { status: "available", services: result.rows };
-  } catch (error) {
-    console.error(JSON.stringify({
-      event: "carpentry_services_read_failed",
-      reason: error instanceof Error ? error.message : "unknown",
-    }));
-    return { status: "unavailable" };
-  }
+  image_id: string | null;
 }
 
 export async function getWoodTypes(): Promise<WoodType[]> {
   const result = await query<WoodType>(
-    `SELECT id, title, tone, grain, character, image_id
+    `SELECT id, title, description, image_id
      FROM app_wood_types WHERE status = 'published'
      ORDER BY sort ASC, date_created DESC, id ASC LIMIT 100`,
   );

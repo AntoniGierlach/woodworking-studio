@@ -36,13 +36,13 @@ describe("nawigacja po ofercie i realizacjach", () => {
     vi.resetAllMocks();
   });
 
-  it("prowadzi ze strony głównej do obu podstron", () => {
-    const html = renderToStaticMarkup(createElement(Home));
+  it("prowadzi ze strony głównej do obu podstron", async () => {
+    const html = renderToStaticMarkup(await Home());
     expect(html).toContain('href="/oferta"');
     expect(html).toContain('href="/realizacje"');
     expect(html).not.toContain('href="#oferta"');
     expect(html).not.toContain('href="#realizacje"');
-    expect(html.match(/Zobacz pełną ofertę/g)).toHaveLength(1);
+    expect(html.match(/Poznaj ofertę/g)).toHaveLength(1);
   });
 
   it("używa ustawień SEO na stronie głównej", async () => {
@@ -58,14 +58,12 @@ describe("nawigacja po ofercie i realizacjach", () => {
     expect(await generateMetadata()).toEqual({});
   });
 
-  it("pokazuje widoczny odnośnik kontaktowy dla usługi", async () => {
+  it("pokazuje wpis oferty", async () => {
     mocks.getContentCollection.mockResolvedValue([
       { id: "1", title: "Stół dębowy", slug: "stol-debowy" },
     ]);
     const html = renderToStaticMarkup(await OfferPage());
-    expect(html).toContain('href="/kontakt"');
-    expect(html).toContain("Zapytaj o usługę");
-    expect(html).toContain('href="/realizacje"');
+    expect(html).toContain("Stół dębowy");
   });
 
   it("umożliwia dalszą nawigację przy pustej ofercie i galerii", async () => {
@@ -73,12 +71,18 @@ describe("nawigacja po ofercie i realizacjach", () => {
     const offer = renderToStaticMarkup(await OfferPage());
     const projects = renderToStaticMarkup(await ProjectsPage());
     expect(offer).toContain('href="/kontakt"');
-    expect(offer).toContain('href="/realizacje"');
+    expect(offer).toContain("Lista usług jest w przygotowaniu");
     expect(projects).toContain('href="/oferta"');
   });
 
   it("łączy opublikowaną realizację ze szczegółami i powrotem do galerii", async () => {
-    const project = { id: "1", title: "Stół dębowy", slug: "stol-debowy" };
+    const project = {
+      id: "1",
+      title: "Stół dębowy",
+      slug: "stol-debowy",
+      cover_image: "cover-id",
+      project_images: [{ id: "2", file: "gallery-id", alt: "Detal stołu" }],
+    };
     mocks.getContentCollection.mockResolvedValue([project]);
     const list = renderToStaticMarkup(await ProjectsPage());
     const detail = renderToStaticMarkup(
@@ -88,6 +92,8 @@ describe("nawigacja po ofercie i realizacjach", () => {
     expect(detail).toContain('href="/realizacje"');
     expect(detail).toContain('href="/kontakt"');
     expect(detail).toContain(project.title);
+    expect(detail).toContain('aria-label="Powiększ zdjęcie: Stół dębowy - zdjęcie realizacji"');
+    expect(detail).toContain('aria-label="Powiększ zdjęcie: Detal stołu"');
   });
 
   it("zachowuje powrót do galerii, gdy szczegóły są niedostępne", async () => {

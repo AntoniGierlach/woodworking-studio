@@ -5,7 +5,7 @@ import { query } from "@/lib/db";
 import { isSameOrigin } from "@/lib/request-security";
 
 const schema = z.object({
-  type: z.enum(["carpentry_services", "services", "projects", "woods"]),
+  type: z.enum(["services", "projects", "woods"]),
   id: z.string().uuid(),
   targetId: z.string().uuid(),
 }).strict();
@@ -31,14 +31,11 @@ export async function PATCH(request: NextRequest) {
 
   const { type, id, targetId } = parsed.data;
   const table = {
-    carpentry_services: "app_carpentry_services",
     projects: "app_projects",
     services: "app_services",
     woods: "app_wood_types",
   }[type];
   try {
-    const timestampUpdate =
-      type === "carpentry_services" ? ", date_updated = CURRENT_TIMESTAMP" : "";
     const result = await query(
       `WITH ranked AS MATERIALIZED (
          SELECT id, row_number() OVER (ORDER BY sort ASC, date_created DESC, id ASC) AS position
@@ -55,7 +52,7 @@ export async function PATCH(request: NextRequest) {
              WHEN positions.source > positions.target AND ranked.position >= positions.target
                   AND ranked.position < positions.source THEN ranked.position + 1
              ELSE ranked.position
-           END - 1 FROM ranked, positions WHERE ranked.id = ${table}.id)${timestampUpdate}
+             END - 1 FROM ranked, positions WHERE ranked.id = ${table}.id)
        WHERE EXISTS (SELECT 1 FROM positions WHERE source IS NOT NULL AND target IS NOT NULL)
        RETURNING id`,
       [id, targetId],

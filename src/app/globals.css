@@ -778,132 +778,6 @@ h2 em,
   margin-top: 30px;
 }
 
-.carpentry-services-page .inner-page-heading h1 {
-  max-width: 860px;
-}
-
-.carpentry-services-page .inner-page-heading > p:last-child {
-  max-width: 720px;
-}
-
-.carpentry-services-grid {
-  display: grid;
-  margin-block: 14px 30px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px;
-}
-
-.carpentry-service-card {
-  display: flex;
-  min-width: 0;
-  min-height: 260px;
-  padding: clamp(20px, 3vw, 24px);
-  flex-direction: column;
-  border: 1px solid rgb(255 255 255 / 55%);
-  background: var(--paper);
-  box-shadow: 0 12px 32px rgb(34 33 29 / 16%);
-  color: var(--ink);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-}
-
-.carpentry-service-card-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--line-strong);
-  color: var(--muted);
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.carpentry-service-index {
-  color: var(--jungle-canopy);
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.carpentry-service-card h2 {
-  margin: 23px 0 12px;
-  font-family: var(--serif);
-  font-size: clamp(26px, 3vw, 36px);
-  font-weight: 400;
-  letter-spacing: -0.04em;
-  line-height: 1.12;
-  overflow-wrap: anywhere;
-}
-
-.carpentry-service-card > p {
-  margin: 0;
-  color: var(--ink-soft);
-  font-size: 15px;
-  line-height: 1.75;
-  overflow-wrap: anywhere;
-  white-space: pre-line;
-}
-
-.carpentry-service-card-footer {
-  display: flex;
-  margin-top: auto;
-  padding-top: 24px;
-  justify-content: space-between;
-  align-items: end;
-  gap: 18px;
-}
-
-.carpentry-service-quote {
-  display: grid;
-  gap: 3px;
-  margin: 0;
-}
-
-.carpentry-service-quote span {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.carpentry-service-quote strong {
-  color: var(--ink);
-  font-family: var(--serif);
-  font-size: 19px;
-  font-weight: 400;
-}
-
-.carpentry-service-card-footer > a {
-  color: var(--jungle-canopy);
-  font-size: 13px;
-  font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 4px;
-}
-
-.carpentry-service-card-footer > a:hover {
-  color: var(--ink);
-}
-
-.carpentry-services-empty {
-  margin-block: 14px 30px;
-}
-
-.carpentry-services-cta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 24px;
-  padding-block: 24px;
-  border-top: 1px solid rgb(245 240 230 / 35%);
-  color: #eee7dc;
-}
-
-.carpentry-services-cta p {
-  margin: 0;
-  font-family: var(--serif);
-  font-size: clamp(22px, 2.4vw, 30px);
-}
-
 .service-arrow {
   justify-self: end;
   color: var(--mountain-moss);
@@ -1148,6 +1022,26 @@ h2 em,
   text-decoration: none;
 }
 
+.offer-empty {
+  display: grid;
+  min-height: 224px;
+  margin-top: 54px;
+  padding: 28px 0;
+  grid-template-columns: 70px 1fr auto;
+  align-items: center;
+  gap: 24px;
+  border-top: 1px solid var(--mountain-moss);
+  border-bottom: 1px solid var(--mountain-moss);
+}
+
+.offer-empty div > p:last-child {
+  max-width: 470px;
+  margin-bottom: 0;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
 .projects-empty {
   display: grid;
   min-height: 224px;
@@ -1229,8 +1123,6 @@ h2 em,
 }
 
 .wood-guide-heading {
-  display: grid;
-  grid-template-columns: 1fr 0.55fr;
   align-items: end;
   gap: 48px;
 }
@@ -1398,33 +1290,18 @@ h2 em,
   overflow-wrap: anywhere;
 }
 
-.wood-kind-content h3,
-.wood-kind-content dl {
+.wood-kind-content h3 {
   position: relative;
 }
 
-.wood-kind dl {
-  display: grid;
-  gap: 14px;
-  margin: 0;
-}
-
-.wood-kind dl > div {
-  display: grid;
-  grid-template-columns: minmax(110px, 0.45fr) minmax(0, 1fr);
-  gap: 16px;
-}
-
-.wood-kind dt {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.wood-kind dd {
+.wood-kind-description {
+  position: relative;
+  max-width: 640px;
   margin: 0;
   color: var(--ink);
   font-size: 15px;
-  line-height: 1.5;
+  line-height: 1.7;
+  white-space: pre-line;
 }
 
 .wood-kind-mark {
@@ -1981,6 +1858,10 @@ h2 em,
   border-left: 1px solid var(--line);
 }
 
+.home-offer-item {
+  align-items: stretch;
+}
+
 .offer-item-content {
   min-width: 0;
 }
@@ -2074,9 +1955,10 @@ h2 em,
   font-weight: 600;
 }
 
-.offer-empty {
+.offer-page-empty {
   grid-column: 1 / -1;
   margin-block: 0 30px;
+  justify-self: center;
 }
 
 @media (max-width: 1000px) {
@@ -2093,6 +1975,7 @@ h2 em,
 
 .project-empty {
   grid-column: 1 / -1;
+  justify-self: center;
 }
 
 .project-card {
@@ -2217,6 +2100,79 @@ h2 em,
   transition: box-shadow var(--motion-normal) var(--ease-out);
 }
 
+.project-image-trigger {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+
+.project-image-trigger:focus-visible,
+.project-image-dialog-close:focus-visible {
+  outline: 3px solid var(--jungle-canopy);
+  outline-offset: 4px;
+}
+
+.project-image-dialog {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  width: 100vw;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 64px 24px 24px;
+  border: 0;
+  background: rgb(18 20 17 / 96%);
+  color: white;
+}
+
+.project-image-dialog::backdrop {
+  background: rgb(18 20 17 / 96%);
+}
+
+.project-image-dialog:not([open]) {
+  display: none;
+}
+
+.project-image-dialog-visual {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.project-image-dialog-visual img {
+  object-fit: contain;
+}
+
+.project-image-dialog-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid rgb(255 255 255 / 45%);
+  background: transparent;
+  color: white;
+  cursor: pointer;
+  font: inherit;
+}
+
+.project-image-dialog-close:hover {
+  background: rgb(255 255 255 / 12%);
+}
+
 .offer-image {
   display: block;
   width: 100%;
@@ -2236,7 +2192,6 @@ h2 em,
   line-height: 1.9;
   white-space: pre-line;
 }
-
 
 .privacy-page-heading h1 {
   max-width: 760px;
@@ -2869,11 +2824,6 @@ h2 em,
     font-size: 34px;
   }
 
-  .wood-kind dl > div {
-    grid-template-columns: minmax(110px, 0.4fr) minmax(0, 1fr);
-    gap: 12px;
-  }
-
   .wood-kind-mark {
     right: 8px;
     font-size: 120px;
@@ -2888,21 +2838,6 @@ h2 em,
   .service-list {
     margin-top: 32px;
     grid-template-columns: 1fr;
-  }
-
-  .carpentry-services-grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-
-  .carpentry-service-card {
-    min-height: 240px;
-  }
-
-  .carpentry-service-card-footer,
-  .carpentry-services-cta {
-    align-items: flex-start;
-    flex-direction: column;
   }
 
   .offer-list {
@@ -4071,4 +4006,3 @@ h2 em,
     grid-column: 1 / -1;
   }
 }
-

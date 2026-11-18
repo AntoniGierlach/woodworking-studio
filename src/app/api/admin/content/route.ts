@@ -15,16 +15,6 @@ const contentSlug = z
   .max(100)
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
 const contentSchemas = {
-  carpentry_services: z.object({
-    title: z.string().trim().min(1).max(255),
-    description: z.string().trim().min(1).max(100_000),
-    price: z.preprocess(
-      (value) => typeof value === "string" && value.trim() === "" ? null : value,
-      z.string().trim().max(120).nullable(),
-    ).optional(),
-    sort: z.coerce.number().int().min(-100_000).max(100_000).optional(),
-    status: recordStatus.optional(),
-  }).strict(),
   services: z.object({
     title: z.string().trim().min(1).max(255),
     slug: contentSlug,
@@ -55,9 +45,7 @@ const contentSchemas = {
   }).strict(),
   woods: z.object({
     title: z.string().trim().min(1).max(255),
-    tone: z.string().trim().min(1).max(255),
-    grain: z.string().trim().min(1).max(255),
-    character: z.string().trim().min(1).max(255),
+    description: z.string().trim().min(1).max(10_000),
     image_id: z.string().uuid().nullable().optional(),
     sort: z.coerce.number().int().min(-100_000).max(100_000).optional(),
     status: recordStatus.optional(),
@@ -85,7 +73,6 @@ const contentSchemas = {
 type ContentType = keyof typeof contentSchemas;
 
 const tables: Record<Exclude<ContentType, "settings">, string> = {
-  carpentry_services: "app_carpentry_services",
   services: "app_services",
   projects: "app_projects",
   woods: "app_wood_types",
@@ -221,7 +208,7 @@ async function getCollection(type: ContentType) {
     }));
   }
   const orderBy =
-    type === "carpentry_services" || type === "services" || type === "woods"
+    type === "services" || type === "woods"
       ? "sort ASC, date_created DESC, id ASC"
       : "date_created DESC";
   const result = await query(

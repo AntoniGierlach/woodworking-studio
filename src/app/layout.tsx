@@ -4,7 +4,7 @@ import ScrollToTop from "./scroll-to-top";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Quercus Fagus - Meble z naturalnego drewna",
+  title: "Puszczawik - Meble z naturalnego drewna",
   description:
     "Warsztat mebli ze szlachetnego drewna, w tym dębu i orzecha.",
 };
