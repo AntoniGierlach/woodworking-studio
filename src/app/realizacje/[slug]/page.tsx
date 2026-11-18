@@ -133,6 +133,7 @@ export default async function ProjectDetailPage({ params }: ProjectPageProps) {
         </div>
         <ProjectImageViewer
           title={project.title}
+          description={project.description}
           cover={project.cover_image ? {
             alt: `${project.title} - zdjęcie realizacji`,
             src: getContentAssetUrl(
@@ -148,11 +149,6 @@ export default async function ProjectDetailPage({ params }: ProjectPageProps) {
             ),
           }))}
         />
-        {project.description && (
-          <div className="page-width project-detail-copy">
-            <p>{project.description}</p>
-          </div>
-        )}
         <div className="page-width studio-callout">
           <p className="eyebrow">PODOBNY PROJEKT?</p>
           <h2>Porozmawiajmy o meblu dopasowanym do Twojej przestrzeni.</h2>
