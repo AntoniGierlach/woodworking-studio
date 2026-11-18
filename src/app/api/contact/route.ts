@@ -10,7 +10,11 @@ import {
 } from "@/lib/contact";
 import { contactRetryAfter } from "@/lib/contact-rate-limit";
 import { batch, query } from "@/lib/db";
-import { deleteContactAttachment, newContactAttachmentKey, writeContactAttachment } from "@/lib/contact-attachment-storage";
+import {
+  deleteContactAttachment,
+  newContactAttachmentKey,
+  writeContactAttachment,
+} from "@/lib/contact-attachment-storage";
 import { isSameOrigin } from "@/lib/request-security";
 
 type ValidatedContactFile = {
@@ -179,18 +183,18 @@ async function handleContactRequest(request: NextRequest) {
         ],
       },
       ...validatedFiles.map((attachment, index) => ({
-          sql: `INSERT INTO app_message_attachments
+        sql: `INSERT INTO app_message_attachments
              (id, message_id, storage_key, original_filename, mime_type, size_bytes)
            VALUES ($1, $2, $3, $4, $5, $6)`,
-          values: [
-            randomUUID(),
-            messageId,
-            storageKeys[index],
-            attachment.safeOriginalName,
-            attachment.mimeType,
-            attachment.file.buffer.length,
-          ],
-        })),
+        values: [
+          randomUUID(),
+          messageId,
+          storageKeys[index],
+          attachment.safeOriginalName,
+          attachment.mimeType,
+          attachment.file.buffer.length,
+        ],
+      })),
     ]);
   } catch (error) {
     let cleanupFailed = false;
@@ -202,7 +206,9 @@ async function handleContactRequest(request: NextRequest) {
       }
     }
     if (cleanupFailed) {
-      console.error(JSON.stringify({ event: "contact_upload_rollback_failed" }));
+      console.error(
+        JSON.stringify({ event: "contact_upload_rollback_failed" }),
+      );
     }
     console.error(
       JSON.stringify({
@@ -225,19 +231,30 @@ async function handleContactRequest(request: NextRequest) {
     );
     const recipient = result.rows[0]?.email?.trim();
     if (!recipient || requiredEnv("RESEND_API_KEY", "EMAIL_FROM").length > 0) {
-      throw new Error("Email recipient or notification service is not configured.");
+      throw new Error(
+        "Email recipient or notification service is not configured.",
+      );
     }
-    const includeEmailAttachments = validatedFiles.reduce(
-      (total, { file }) => total + file.buffer.length,
-      0,
-    ) <= 20 * 1024 * 1024;
+    const includeEmailAttachments =
+      validatedFiles.reduce(
+        (total, { file }) => total + file.buffer.length,
+        0,
+      ) <=
+      20 * 1024 * 1024;
     const resend = new Resend(process.env.RESEND_API_KEY!.trim());
+    const ticketId = messageId.slice(0, 8).toUpperCase();
+
     const { error } = await resend.emails.send({
       from: process.env.EMAIL_FROM!.trim(),
       to: recipient,
       replyTo: submission.fields.email,
-      subject: `Zapytanie ze strony: ${submission.fields.subject || "nowa wiadomość"}`,
+      subject: `[Zgłoszenie #${ticketId}] ${
+        submission.fields.subject || "nowa wiadomość"
+      }`,
+
       text: [
+        `Numer zgłoszenia: #${ticketId}`,
+        "",
         `Imię i nazwisko: ${submission.fields.name}`,
         `E-mail: ${submission.fields.email}`,
         `Telefon: ${submission.fields.phone || "Nie podano"}`,
@@ -246,18 +263,29 @@ async function handleContactRequest(request: NextRequest) {
         "Wiadomość:",
         submission.fields.message,
         "",
-        `Załączniki: ${validatedFiles.length}${includeEmailAttachments ? "" : " (dostępne w panelu administratora; zbyt duże, by dołączyć je do wiadomości e-mail)"}`,
+        `Załączniki: ${validatedFiles.length}${
+          includeEmailAttachments
+            ? ""
+            : " (dostępne w panelu administratora; zbyt duże, by dołączyć je do wiadomości e-mail)"
+        }`,
       ].join("\n"),
-      attachments: (includeEmailAttachments ? validatedFiles : []).map(({ file, safeOriginalName, mimeType }) => ({
-        filename: safeOriginalName,
-        content: file.buffer,
-        contentType: mimeType,
-      })),
+
+      attachments: (includeEmailAttachments ? validatedFiles : []).map(
+        ({ file, safeOriginalName, mimeType }) => ({
+          filename: safeOriginalName,
+          content: file.buffer,
+          contentType: mimeType,
+        }),
+      ),
     });
-    if (error) throw new Error(`Email provider rejected notification: ${error.message}`);
+
+    if (error) {
+      throw new Error(`Email provider rejected notification: ${error.message}`);
+    }
   } catch (error) {
     notificationFailed = true;
-    notificationError = error instanceof Error ? error.message : "Email delivery failed.";
+    notificationError =
+      error instanceof Error ? error.message : "Email delivery failed.";
   }
 
   try {
@@ -266,11 +294,7 @@ async function handleContactRequest(request: NextRequest) {
        SET email_notification_status = $2,
            email_notification_error = $3
        WHERE id = $1`,
-      [
-        messageId,
-        notificationFailed ? "failed" : "sent",
-        notificationError,
-      ],
+      [messageId, notificationFailed ? "failed" : "sent", notificationError],
     );
   } catch (error) {
     console.error(
