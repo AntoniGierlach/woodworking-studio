@@ -34,6 +34,15 @@ export function truncateDescription(text: string, max = 160): string {
   return `${(lastSpace > 80 ? cut.slice(0, lastSpace) : cut).replace(/[\s,.;:–-]+$/, "")}…`;
 }
 
+export type PageMetadata = Metadata & {
+  twitter: {
+    card: "summary_large_image";
+    title: string;
+    description?: string;
+    images: string[];
+  };
+};
+
 type PageMetadataInput = {
   title: string;
   description?: string;
@@ -48,7 +57,7 @@ export function buildPageMetadata({
   path,
   image,
   noindex = false,
-}: PageMetadataInput): Metadata {
+}: PageMetadataInput): PageMetadata {
   const url = absoluteUrl(path);
   const shareImage = image ?? {
     url: defaultShareImage.src,
