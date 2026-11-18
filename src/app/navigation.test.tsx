@@ -80,6 +80,7 @@ describe("nawigacja po ofercie i realizacjach", () => {
       id: "1",
       title: "Stół dębowy",
       slug: "stol-debowy",
+      description: "Opis projektu pod zdjęciem głównym.",
       cover_image: "cover-id",
       project_images: [{ id: "2", file: "gallery-id", alt: "Detal stołu" }],
     };
@@ -94,6 +95,12 @@ describe("nawigacja po ofercie i realizacjach", () => {
     expect(detail).toContain(project.title);
     expect(detail).toContain('aria-label="Powiększ zdjęcie: Stół dębowy - zdjęcie realizacji"');
     expect(detail).toContain('aria-label="Powiększ zdjęcie: Detal stołu"');
+    expect(detail.indexOf("Powiększ zdjęcie: Stół dębowy - zdjęcie realizacji")).toBeLessThan(
+      detail.indexOf("Opis projektu pod zdjęciem głównym."),
+    );
+    expect(detail.indexOf("Opis projektu pod zdjęciem głównym.")).toBeLessThan(
+      detail.indexOf("Powiększ zdjęcie: Detal stołu"),
+    );
   });
 
   it("zachowuje powrót do galerii, gdy szczegóły są niedostępne", async () => {

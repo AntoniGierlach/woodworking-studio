@@ -12,10 +12,12 @@ type ProjectPhoto = {
 export default function ProjectImageViewer({
   title,
   cover,
+  description,
   images,
 }: {
   title: string;
   cover?: ProjectPhoto | null;
+  description?: string | null;
   images: ProjectPhoto[];
 }) {
   const [activePhoto, setActivePhoto] = useState<ProjectPhoto | null>(null);
@@ -54,6 +56,11 @@ export default function ProjectImageViewer({
       {cover && (
         <div className="page-width">
           {renderPhoto(cover, "cover", 0)}
+        </div>
+      )}
+      {description && (
+        <div className="page-width project-detail-copy">
+          <p>{description}</p>
         </div>
       )}
       {images.length > 0 && (

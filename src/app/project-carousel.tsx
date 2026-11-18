@@ -81,7 +81,7 @@ export default function ProjectCarousel({ projects }: { projects: CarouselProjec
               key={enterFromLeft ? `${project.id}-previous-${slide.active}` : project.id}
             >
               {project.imageUrl ? (
-                <Image alt="" fill sizes="(max-width: 760px) 75vw, 45vw" src={project.imageUrl} />
+                <Image alt={`${project.title} - zdjęcie realizacji`} fill sizes="(max-width: 760px) 75vw, 45vw" src={project.imageUrl} />
               ) : (
                 <span className="project-carousel-placeholder" aria-hidden="true"><ImageOff /></span>
               )}

@@ -8,12 +8,15 @@ import {
   getContentUnavailableNotice,
 } from "@/lib/content-data";
 import { SiteLayout } from "../site-chrome";
+import JsonLd from "../json-ld";
+import { breadcrumbJsonLd, buildPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Puszczawik | Realizacje",
+export const metadata: Metadata = buildPageMetadata({
+  title: "Realizacje – meble z drewna na wymiar | Puszczawik",
   description:
-    "Galeria mebli z naturalnego drewna opublikowanych przez pracownię.",
-};
+    "Zobacz meble z naturalnego drewna wykonane w naszej pracowni stolarskiej: indywidualne projekty i realizacje na zamówienie.",
+  path: "/realizacje",
+});
 
 type Project = {
   id: string;
@@ -54,6 +57,7 @@ export default async function ProjectsPage() {
 
   return (
     <SiteLayout innerPage>
+      <JsonLd data={breadcrumbJsonLd([{ name: "Realizacje", path: "/realizacje" }])} />
       <section aria-labelledby="projects-page-title" className="inner-page">
         <div className="inner-page-heading page-width">
           <h1 id="projects-page-title">
@@ -93,6 +97,7 @@ export default async function ProjectsPage() {
                       <Image
                         alt={`${project.title} - zdjęcie realizacji`}
                         fill
+                        loading={index < 2 ? "eager" : "lazy"}
                         sizes="(max-width: 760px) 100vw, 50vw"
                         src={getContentAssetUrl(
                           typeof project.cover_image === "string"

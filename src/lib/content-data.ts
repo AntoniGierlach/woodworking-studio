@@ -37,6 +37,7 @@ export interface Project {
   sort?: number | null;
   status: string;
   date_created?: string | null;
+  date_updated?: string | null;
 }
 
 export interface ProjectPreview {
@@ -119,7 +120,7 @@ export async function getContentCollection<T>(
   if (collection === "projects") {
     const base = `SELECT p.id, p.title, p.slug, p.category, p.short_description,
                          p.description, p.cover_image_id AS cover_image, p.sort,
-                         p.status, p.date_created,
+                         p.status, p.date_created, p.date_updated,
                          COALESCE((
                            SELECT json_group_array(json_object(
                              'id', pi.id,

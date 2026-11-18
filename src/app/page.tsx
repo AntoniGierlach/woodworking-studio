@@ -3,6 +3,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { getSiteSettings } from "@/lib/site-settings";
+import { HOME_DESCRIPTION, HOME_TITLE, buildPageMetadata, localBusinessJsonLd } from "@/lib/seo";
+import JsonLd from "./json-ld";
 import backgroundImage from "../../storage/background2-cloudflare.jpg";
 import workshopImage from "../../storage/workshop.jpg";
 import workshopImage1 from "../../storage/workshop1.jpg";
@@ -13,16 +15,18 @@ import WoodShowcase from "./wood-showcase";
 
 export async function generateMetadata(): Promise<Metadata> {
   const result = await getSiteSettings();
-  if (result.status === "unavailable" || !result.settings) return {};
-  return {
-    title: result.settings.seo_title?.trim() || undefined,
-    description: result.settings.seo_description?.trim() || undefined,
-  };
+  const settings = result.status === "available" ? result.settings : null;
+  return buildPageMetadata({
+    title: settings?.seo_title?.trim() || HOME_TITLE,
+    description: settings?.seo_description?.trim() || HOME_DESCRIPTION,
+    path: "/",
+  });
 }
 
 export default async function Home() {
   return (
     <SiteLayout>
+      <JsonLd data={localBusinessJsonLd()} />
       <section aria-labelledby="hero-title" className="hero">
         <div aria-hidden="true" className="hero-background">
           <Image
@@ -219,6 +223,10 @@ export default async function Home() {
               jakie drewno wybrać i od czego zacząć. Napisz nam, czego
               potrzebujesz. Chętnie poznamy Twój pomysł i porozmawiamy o
               możliwościach jego realizacji.
+            </p>
+            <p>
+              Nasz warsztat znajduje się w Jerzmanowicach. Meble na wymiar
+              wykonujemy dla klientów z Krakowa i całej Małopolski.
             </p>
             <Link className="button button-dark" href="/kontakt">
               Przejdź do formularza

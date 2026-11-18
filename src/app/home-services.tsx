@@ -51,7 +51,7 @@ export default async function HomeServices() {
             {service.image && (
               <div className="offer-image-frame">
                 <Image
-                  alt=""
+                  alt={service.title}
                   className="offer-image"
                   fill
                   sizes="(max-width: 760px) 100vw, 33vw"

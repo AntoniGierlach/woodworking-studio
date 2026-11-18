@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import ContentNotice from "../../content-notice";
 import {
@@ -9,6 +10,13 @@ import {
 } from "@/lib/content-data";
 import { SiteLayout } from "../../site-chrome";
 import ProjectImageViewer from "./project-image-viewer";
+import JsonLd from "../../json-ld";
+import {
+  NOINDEX_METADATA,
+  breadcrumbJsonLd,
+  buildPageMetadata,
+  truncateDescription,
+} from "@/lib/seo";
 
 type AssetReference = string | { id: string };
 
@@ -31,25 +39,59 @@ type ProjectPageProps = {
   params: Promise<{ slug: string}>;
 };
 
+// Jedno zapytanie na żądanie: korzystają z niego zarówno generateMetadata, jak i strona.
+const getProject = cache(async (slug: string) => {
+  const projects = await getContentCollection<Project>("projects", {
+    "filter[slug][_eq]": slug,
+    "filter[status][_eq]": "published",
+    fields: "*,cover_image.*,project_images.*,project_images.file.*",
+    "deep[project_images][_sort]": "sort",
+    limit: "1",
+  });
+  return projects[0];
+});
+
+function assetId(reference: AssetReference): string {
+  return typeof reference === "string" ? reference : reference.id;
+}
+
 export async function generateMetadata({
+  params,
 }: ProjectPageProps): Promise<Metadata> {
-  return {
-    title: `Puszczawik | Realizacja`,
-  };
+  const { slug } = await params;
+  let project: Project | undefined;
+  try {
+    project = await getProject(slug);
+  } catch {
+    return NOINDEX_METADATA;
+  }
+  if (!project) return NOINDEX_METADATA;
+
+  const description = truncateDescription(
+    project.short_description?.trim() ||
+      project.description?.trim() ||
+      `${project.title} – indywidualna realizacja wykonana w pracowni stolarskiej Puszczawik.`,
+  );
+  const imageRef = project.cover_image ?? project.project_images?.[0]?.file;
+
+  return buildPageMetadata({
+    title: `${project.title} – indywidualna realizacja | Puszczawik`,
+    description,
+    path: `/realizacje/${encodeURIComponent(project.slug)}`,
+    image: imageRef
+      ? {
+          url: getContentAssetUrl(assetId(imageRef)),
+          alt: `${project.title} - zdjęcie realizacji`,
+        }
+      : undefined,
+  });
 }
 
 export default async function ProjectDetailPage({ params }: ProjectPageProps) {
   const { slug } = await params;
   let project: Project | undefined;
   try {
-    const projects = await getContentCollection<Project>("projects", {
-      "filter[slug][_eq]": slug,
-      "filter[status][_eq]": "published",
-      fields: "*,cover_image.*,project_images.*,project_images.file.*",
-      "deep[project_images][_sort]": "sort",
-      limit: "1",
-    });
-    project = projects[0];
+    project = await getProject(slug);
   } catch {
     const notice = getContentUnavailableNotice();
     return (
@@ -70,6 +112,15 @@ export default async function ProjectDetailPage({ params }: ProjectPageProps) {
 
   return (
     <SiteLayout innerPage>
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: "Realizacje", path: "/realizacje" },
+          {
+            name: project.title,
+            path: `/realizacje/${encodeURIComponent(project.slug)}`,
+          },
+        ])}
+      />
       <article aria-labelledby="project-title" className="inner-page">
         <div className="inner-page-heading page-width">
           <Link className="button button-dark" href="/realizacje">

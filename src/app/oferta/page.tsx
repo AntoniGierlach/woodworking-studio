@@ -11,12 +11,15 @@ import {
   getContentUnavailableNotice,
 } from "@/lib/content-data";
 import { SiteLayout } from "../site-chrome";
+import JsonLd from "../json-ld";
+import { breadcrumbJsonLd, buildPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Quercus Fagus | Oferta",
+export const metadata: Metadata = buildPageMetadata({
+  title: "Meble na zamówienie z naturalnego drewna | Puszczawik",
   description:
-    "Poznaj możliwości projektowania mebli z naturalnego drewna. Szczegóły oferty uzupełnia warsztat.",
-};
+    "Meble drewniane na zamówienie i indywidualne projekty stolarskie. Sprawdź, co wykonujemy w naszym warsztacie, i zapytaj o realizację w Krakowie lub Małopolsce.",
+  path: "/oferta",
+});
 
 type Service = {
   id: string;
@@ -44,9 +47,9 @@ export default async function OfferPage() {
         <section className="inner-page">
           <div className="inner-page-heading page-width">
             <h1>
-              Meble, które możesz zabrać do
+              Czym się
               <br />
-              <em>swojego domu.</em>
+              <em>zajmujemy?</em>
             </h1>
           </div>
           <div className="page-width">
@@ -59,18 +62,19 @@ export default async function OfferPage() {
 
   return (
     <SiteLayout innerPage>
+      <JsonLd data={breadcrumbJsonLd([{ name: "Oferta", path: "/oferta" }])} />
       <section aria-labelledby="offer-title" className="inner-page">
         <div className="inner-page-heading page-width">
           <h1 id="offer-title">
-            Meble, które możesz zabrać do
+            Czym się
             <br />
-            <em>swojego domu.</em>
+            <em>zajmujemy?</em>
           </h1>
           <p>
-            W naszej ofercie znajdziesz gotowe meble wykonane z naturalnego
-            drewna. Każdy z nich powstaje w warsztacie, z dbałością o dobór
-            materiału, proporcje i wykończenie. Sprawdź aktualnie dostępne
-            projekty i znajdź coś dla siebie.
+            Oferujemy kompleksowe usługi stolarskie, łącząc tradycyjne rzemiosło
+            z precyzją nowoczesnej obróbki drewna. Realizujemy indywidualne
+            projekty mebli na wymiar, a także prace związane z przygotowaniem i
+            obróbką materiału.
           </p>
         </div>
         <OfferList>
@@ -95,9 +99,10 @@ export default async function OfferPage() {
                   {service.image && (
                     <div className="offer-image-frame">
                       <Image
-                        alt=""
+                        alt={service.title}
                         className="offer-image"
                         fill
+                        fetchPriority={index === 0 ? "high" : "auto"}
                         loading={index < 3 ? "eager" : "lazy"}
                         sizes="(max-width: 760px) 100vw, (max-width: 1000px) 50vw, 33vw"
                         src={getContentAssetUrl(

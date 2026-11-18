@@ -3,7 +3,10 @@ import Link from "next/link";
 import { AdminLoginForm } from "../login-form";
 import { isAdminAuthenticated } from "@/lib/admin-session";
 
-export const metadata = { title: "Logowanie | Panel warsztatu" };
+export const metadata = {
+  title: "Logowanie | Panel warsztatu",
+  robots: { index: false, follow: false },
+};
 
 export default async function AdminLoginPage() {
   if (await isAdminAuthenticated()) redirect("/admin");
