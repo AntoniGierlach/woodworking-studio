@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { getSiteSettings } from "@/lib/site-settings";
-import { HOME_DESCRIPTION, HOME_TITLE, buildPageMetadata, localBusinessJsonLd } from "@/lib/seo";
+import { HOME_DESCRIPTION, HOME_TITLE, buildPageMetadata, localBusinessJsonLd, websiteJsonLd } from "@/lib/seo";
 import JsonLd from "./json-ld";
 import backgroundImage from "../../storage/background2-cloudflare.jpg";
 import workshopImage from "../../storage/workshop.jpg";
@@ -26,6 +26,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function Home() {
   return (
     <SiteLayout>
+      <JsonLd data={websiteJsonLd()} />
       <JsonLd data={localBusinessJsonLd()} />
       <section aria-labelledby="hero-title" className="hero">
         <div aria-hidden="true" className="hero-background">

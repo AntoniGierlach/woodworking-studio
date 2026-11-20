@@ -121,6 +121,17 @@ export function localBusinessJsonLd() {
   };
 }
 
+export function websiteJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": `${SITE_URL}/#website`,
+    name: "Warsztat Stolarski Puszczawik",
+    alternateName: "Puszczawik",
+    url: `${SITE_URL}/`,
+  };
+}
+
 export type Crumb = { name: string; path: string };
 export function breadcrumbJsonLd(crumbs: Crumb[]) {
   const items: Crumb[] = [{ name: "Strona główna", path: "/" }, ...crumbs];
